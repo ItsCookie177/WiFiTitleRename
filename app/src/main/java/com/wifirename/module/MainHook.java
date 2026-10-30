@@ -1,5 +1,6 @@
 package com.wifirename.module;
 
+import android.os.SystemClock;
 import android.util.Xml;
 
 import org.xmlpull.v1.XmlPullParser;
@@ -28,36 +29,38 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage.LoadPackageParam;
 public final class MainHook implements IXposedHookLoadPackage {
 
     private static final String TAG = "WifiRename";
-    private static final String[] TARGET_PACKAGES = {
-            "com.android.settings",
-            "com.android.systemui"
-    };
+    private static final String SETTINGS_PKG = "com.android.settings";
+    private static final String SYSTEMUI_PKG = "com.android.systemui";
     private static final String PRIMARY_CLASS = "com.android.wifitrackerlib.StandardWifiEntry";
     private static final String BASE_CLASS = "com.android.wifitrackerlib.WifiEntry";
     private static final String SCAN_PACKAGE = "com.android.wifitrackerlib";
     private static final String FALLBACK_SSID = "bagus.hanif";
     private static final String FALLBACK_LABEL = "Leo's wifi";
+    private static final long PREF_RELOAD_MIN_INTERVAL_MS = 2000;
+    private static final long SYSUI_LOG_MIN_INTERVAL_MS = 3000;
 
     private static final Object PREF_LOCK = new Object();
     private static final Map<String, String> MAPPING = new HashMap<>();
     private static XSharedPreferences xprefs;
+    private static long lastReload = Long.MIN_VALUE;
+    private static long lastSysuiReplaceLog = Long.MIN_VALUE;
 
     @Override
     public void handleLoadPackage(LoadPackageParam lpparam) {
         try {
             XposedBridge.log(TAG + ": loaded in " + lpparam.packageName);
-
-            boolean target = false;
-            for (String pkg : TARGET_PACKAGES) {
-                if (pkg.equals(lpparam.packageName)) {
-                    target = true;
-                    break;
-                }
+            if (SETTINGS_PKG.equals(lpparam.packageName)) {
+                setupSettingsHook(lpparam);
+            } else if (SYSTEMUI_PKG.equals(lpparam.packageName)) {
+                setupSystemuiHook(lpparam);
             }
-            if (!target) {
-                return;
-            }
+        } catch (Throwable t) {
+            XposedBridge.log(TAG + ": handleLoadPackage(" + lpparam.packageName + ") failed: " + t);
+        }
+    }
 
+    private static void setupSettingsHook(LoadPackageParam lpparam) {
+        try {
             List<Class<?>> hooked = new ArrayList<>();
             hookPrimary(lpparam.classLoader, hooked);
             if (hooked.isEmpty()) {
@@ -67,18 +70,56 @@ public final class MainHook implements IXposedHookLoadPackage {
                 scanAndHook(lpparam.classLoader, SCAN_PACKAGE, hooked);
             }
             if (hooked.isEmpty()) {
-                XposedBridge.log(TAG + ": no WifiEntry class hooked in " + lpparam.packageName);
+                XposedBridge.log(TAG + ": no WifiEntry class hooked in " + SETTINGS_PKG);
             }
         } catch (Throwable t) {
-            XposedBridge.log(TAG + ": handleLoadPackage(" + lpparam.packageName + ") failed: " + t);
+            XposedBridge.log(TAG + ": settings hook setup failed: " + t);
+        }
+    }
+
+    private static void setupSystemuiHook(LoadPackageParam lpparam) {
+        try {
+            ClassLoader cl = lpparam.classLoader;
+            final Class<?> textView = cl.loadClass("android.widget.TextView");
+            final Class<?> bufferType = cl.loadClass("android.widget.TextView$BufferType");
+            XC_MethodHook hook = new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                    try {
+                        if (param.args == null || param.args.length < 1 || param.args[0] == null) {
+                            return;
+                        }
+                        Map<String, String> map = refreshMapping(false);
+                        if (map.isEmpty()) {
+                            return;
+                        }
+                        String orig = param.args[0].toString();
+                        String replacement = lookup(orig, map);
+                        if (replacement != null && !replacement.equals(orig)) {
+                            param.args[0] = replacement;
+                            long now = SystemClock.elapsedRealtime();
+                            if (now - lastSysuiReplaceLog >= SYSUI_LOG_MIN_INTERVAL_MS) {
+                                lastSysuiReplaceLog = now;
+                                XposedBridge.log(TAG + ": replaced '" + orig + "' -> '" + replacement
+                                        + "' in systemui");
+                            }
+                        }
+                    } catch (Throwable t) {
+                        XposedBridge.log(TAG + ": setText hook error: " + t);
+                    }
+                }
+            };
+            XposedHelpers.findAndHookMethod(textView, "setText", CharSequence.class, bufferType, hook);
+            XposedBridge.log(TAG + ": hooked TextView.setText in systemui");
+        } catch (Throwable t) {
+            XposedBridge.log(TAG + ": TextView.setText hook setup failed: " + t);
         }
     }
 
     private static void hookPrimary(ClassLoader cl, List<Class<?>> hooked) {
         try {
             Class<?> clazz = cl.loadClass(PRIMARY_CLASS);
-            XC_MethodHook titleHook = buildTitleHook();
-            Set<XC_MethodHook.Unhook> unhooks = XposedBridge.hookAllMethods(clazz, "getTitle", titleHook);
+            Set<XC_MethodHook.Unhook> unhooks = XposedBridge.hookAllMethods(clazz, "getTitle", buildTitleHook());
             XposedBridge.log(TAG + ": hooked getTitle count=" + unhooks.size()
                     + " class=" + clazz.getName());
             if (unhooks.isEmpty()) {
@@ -156,7 +197,7 @@ public final class MainHook implements IXposedHookLoadPackage {
             protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                 try {
                     CharSequence orig = (CharSequence) param.getResult();
-                    Map<String, String> map = refreshMapping();
+                    Map<String, String> map = refreshMapping(true);
                     XposedBridge.log(TAG + ": title=" + (orig == null ? "null" : orig.toString())
                             + " map=" + map.size());
                     if (orig == null) {
@@ -229,20 +270,27 @@ public final class MainHook implements IXposedHookLoadPackage {
         return s;
     }
 
-    private static Map<String, String> refreshMapping() {
+    private static Map<String, String> refreshMapping(boolean alwaysReload) {
         synchronized (PREF_LOCK) {
-            boolean readable = false;
-            int size = -1;
+            if (!alwaysReload && !MAPPING.isEmpty()) {
+                long now = SystemClock.elapsedRealtime();
+                if (now - lastReload < PREF_RELOAD_MIN_INTERVAL_MS) {
+                    return MAPPING;
+                }
+            }
             try {
                 if (xprefs == null) {
                     xprefs = new XSharedPreferences(BuildConfig.APPLICATION_ID, Prefs.PREFS_NAME);
                 }
                 File file = xprefs.getFile();
-                readable = file != null && file.canRead();
+                boolean readable = file != null && file.canRead();
                 xprefs.reload();
                 Map<String, ?> all = xprefs.getAll();
-                size = all != null ? all.size() : -1;
-                XposedBridge.log(TAG + ": prefs readable=" + readable + " size=" + size);
+                int size = all != null ? all.size() : -1;
+                lastReload = SystemClock.elapsedRealtime();
+                if (alwaysReload) {
+                    XposedBridge.log(TAG + ": prefs readable=" + readable + " size=" + size);
+                }
 
                 Map<String, String> fresh = new HashMap<>();
                 if (all != null) {
@@ -256,8 +304,10 @@ public final class MainHook implements IXposedHookLoadPackage {
                 }
                 if (fresh.isEmpty()) {
                     fresh.put(FALLBACK_SSID, FALLBACK_LABEL);
-                    XposedBridge.log(TAG + ": prefs empty/unreadable, using builtin fallback ("
-                            + FALLBACK_SSID + " -> " + FALLBACK_LABEL + ")");
+                    if (alwaysReload) {
+                        XposedBridge.log(TAG + ": prefs empty/unreadable, using builtin fallback ("
+                                + FALLBACK_SSID + " -> " + FALLBACK_LABEL + ")");
+                    }
                 }
                 MAPPING.clear();
                 MAPPING.putAll(fresh);
@@ -265,6 +315,7 @@ public final class MainHook implements IXposedHookLoadPackage {
                 XposedBridge.log(TAG + ": prefs load failed, using builtin fallback: " + t);
                 MAPPING.clear();
                 MAPPING.put(FALLBACK_SSID, FALLBACK_LABEL);
+                lastReload = SystemClock.elapsedRealtime();
             }
             return MAPPING;
         }
