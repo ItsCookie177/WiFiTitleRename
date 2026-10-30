@@ -27,24 +27,26 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage.LoadPackageParam;
 
 public final class MainHook implements IXposedHookLoadPackage {
 
-    private static final String TAG = "WiFiTitleRename";
+    private static final String TAG = "WifiRename";
     private static final String[] TARGET_PACKAGES = {
             "com.android.settings",
             "com.android.systemui"
     };
-    private static final String[] PRIMARY_CANDIDATES = {
-            "com.android.wifitrackerlib.StandardWifiEntry"
-    };
+    private static final String PRIMARY_CLASS = "com.android.wifitrackerlib.StandardWifiEntry";
+    private static final String BASE_CLASS = "com.android.wifitrackerlib.WifiEntry";
     private static final String SCAN_PACKAGE = "com.android.wifitrackerlib";
+    private static final String FALLBACK_SSID = "bagus.hanif";
+    private static final String FALLBACK_LABEL = "Leo's wifi";
 
     private static final Object PREF_LOCK = new Object();
     private static final Map<String, String> MAPPING = new HashMap<>();
     private static XSharedPreferences xprefs;
-    private static long cacheStamp = -1;
 
     @Override
     public void handleLoadPackage(LoadPackageParam lpparam) {
         try {
+            XposedBridge.log(TAG + ": loaded in " + lpparam.packageName);
+
             boolean target = false;
             for (String pkg : TARGET_PACKAGES) {
                 if (pkg.equals(lpparam.packageName)) {
@@ -57,55 +59,51 @@ public final class MainHook implements IXposedHookLoadPackage {
             }
 
             List<Class<?>> hooked = new ArrayList<>();
-            for (String name : PRIMARY_CANDIDATES) {
-                hookClass(lpparam.classLoader, name, hooked, true);
+            hookPrimary(lpparam.classLoader, hooked);
+            if (hooked.isEmpty()) {
+                tryHookBase(lpparam.classLoader, hooked);
             }
             if (hooked.isEmpty()) {
                 scanAndHook(lpparam.classLoader, SCAN_PACKAGE, hooked);
             }
             if (hooked.isEmpty()) {
-                XposedBridge.log(TAG + ": no WifiEntry class hooked in " + lpparam.packageName
-                        + "; StandardWifiEntry/getTitle not found (HyperOS modified?)");
+                XposedBridge.log(TAG + ": no WifiEntry class hooked in " + lpparam.packageName);
             }
         } catch (Throwable t) {
             XposedBridge.log(TAG + ": handleLoadPackage(" + lpparam.packageName + ") failed: " + t);
         }
     }
 
-    private static void hookClass(ClassLoader cl, String className, List<Class<?>> hooked, boolean verbose) {
+    private static void hookPrimary(ClassLoader cl, List<Class<?>> hooked) {
         try {
-            Class<?> clazz = cl.loadClass(className);
-            if (hooked.contains(clazz)) {
-                return;
+            Class<?> clazz = cl.loadClass(PRIMARY_CLASS);
+            XC_MethodHook titleHook = buildTitleHook();
+            Set<XC_MethodHook.Unhook> unhooks = XposedBridge.hookAllMethods(clazz, "getTitle", titleHook);
+            XposedBridge.log(TAG + ": hooked getTitle count=" + unhooks.size()
+                    + " class=" + clazz.getName());
+            if (unhooks.isEmpty()) {
+                dumpTitleSsidMethods(clazz);
+            } else {
+                hooked.add(clazz);
             }
+        } catch (Throwable t) {
+            XposedBridge.log(TAG + ": hookAllMethods(" + PRIMARY_CLASS + "#getTitle) failed: " + t);
+        }
+    }
+
+    private static void tryHookBase(ClassLoader cl, List<Class<?>> hooked) {
+        try {
+            Class<?> clazz = cl.loadClass(BASE_CLASS);
             Method m = findConcreteGetTitle(clazz);
             if (m == null) {
-                if (verbose) {
-                    XposedBridge.log(TAG + ": " + className + " has no hookable (non-abstract) getTitle()");
-                }
+                XposedBridge.log(TAG + ": " + BASE_CLASS + " has no hookable (non-abstract) getTitle()");
                 return;
             }
-            XposedBridge.hookMethod(m, new XC_MethodHook() {
-                @Override
-                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                    try {
-                        CharSequence orig = (CharSequence) param.getResult();
-                        if (orig == null) {
-                            return;
-                        }
-                        String replacement = lookup(orig.toString());
-                        if (replacement != null && !replacement.contentEquals(orig)) {
-                            param.setResult(replacement);
-                        }
-                    } catch (Throwable t) {
-                        XposedBridge.log(TAG + ": getTitle replacement failed: " + t);
-                    }
-                }
-            });
+            XposedBridge.hookMethod(m, buildTitleHook());
             hooked.add(clazz);
-            XposedBridge.log(TAG + ": hooked " + m.getDeclaringClass().getName() + "#getTitle (target=" + className + ")");
+            XposedBridge.log(TAG + ": hooked base " + m.getDeclaringClass().getName() + "#getTitle");
         } catch (Throwable t) {
-            XposedBridge.log(TAG + ": hooking " + className + " failed: " + t);
+            XposedBridge.log(TAG + ": hooking base " + BASE_CLASS + " failed: " + t);
         }
     }
 
@@ -131,11 +129,62 @@ public final class MainHook implements IXposedHookLoadPackage {
                 }
             }
             for (String name : names) {
-                hookClass(cl, name, hooked, false);
+                try {
+                    Class<?> clazz = cl.loadClass(name);
+                    if (hooked.contains(clazz)) {
+                        continue;
+                    }
+                    Method m = findConcreteGetTitle(clazz);
+                    if (m == null) {
+                        continue;
+                    }
+                    XposedBridge.hookMethod(m, buildTitleHook());
+                    hooked.add(clazz);
+                    XposedBridge.log(TAG + ": hooked (scan) " + clazz.getName() + "#getTitle");
+                } catch (Throwable ignored) {
+                }
             }
             XposedBridge.log(TAG + ": fallback scan done, hooked classes=" + hooked.size());
         } catch (Throwable t) {
             XposedBridge.log(TAG + ": fallback class scan of " + pkg + " failed: " + t);
+        }
+    }
+
+    private static XC_MethodHook buildTitleHook() {
+        return new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                try {
+                    CharSequence orig = (CharSequence) param.getResult();
+                    Map<String, String> map = refreshMapping();
+                    XposedBridge.log(TAG + ": title=" + (orig == null ? "null" : orig.toString())
+                            + " map=" + map.size());
+                    if (orig == null) {
+                        return;
+                    }
+                    String replacement = lookup(orig.toString(), map);
+                    if (replacement != null && !replacement.contentEquals(orig)) {
+                        param.setResult(replacement);
+                        XposedBridge.log(TAG + ": replaced '" + orig + "' -> '" + replacement + "'");
+                    }
+                } catch (Throwable t) {
+                    XposedBridge.log(TAG + ": getTitle hook error: " + t);
+                }
+            }
+        };
+    }
+
+    private static void dumpTitleSsidMethods(Class<?> clazz) {
+        try {
+            for (Method m : clazz.getDeclaredMethods()) {
+                String n = m.getName();
+                if (n.contains("Title") || n.contains("Ssid") || n.contains("SSID")) {
+                    XposedBridge.log(TAG + ": candidate method " + m + " abstract="
+                            + Modifier.isAbstract(m.getModifiers()));
+                }
+            }
+        } catch (Throwable t) {
+            XposedBridge.log(TAG + ": method dump failed: " + t);
         }
     }
 
@@ -153,8 +202,7 @@ public final class MainHook implements IXposedHookLoadPackage {
         return null;
     }
 
-    private static String lookup(String original) {
-        Map<String, String> map = refreshMapping();
+    private static String lookup(String original, Map<String, String> map) {
         if (map.isEmpty()) {
             return null;
         }
@@ -183,52 +231,41 @@ public final class MainHook implements IXposedHookLoadPackage {
 
     private static Map<String, String> refreshMapping() {
         synchronized (PREF_LOCK) {
-            if (xprefs == null) {
-                try {
+            boolean readable = false;
+            int size = -1;
+            try {
+                if (xprefs == null) {
                     xprefs = new XSharedPreferences(BuildConfig.APPLICATION_ID, Prefs.PREFS_NAME);
-                } catch (Throwable t) {
-                    xprefs = null;
                 }
-            }
-            File file = xprefs != null ? xprefs.getFile() : null;
-            if (file == null) {
-                file = new File("/data/user/0/" + BuildConfig.APPLICATION_ID
-                        + "/shared_prefs/" + Prefs.PREFS_NAME + ".xml");
-                if (!file.exists()) {
-                    file = new File("/data/data/" + BuildConfig.APPLICATION_ID
-                            + "/shared_prefs/" + Prefs.PREFS_NAME + ".xml");
-                }
-            }
-            if (!file.exists()) {
-                MAPPING.clear();
-                cacheStamp = -1;
-                return MAPPING;
-            }
-            long stamp = file.lastModified() + file.length();
-            if (stamp == cacheStamp) {
-                return MAPPING;
-            }
-            cacheStamp = stamp;
+                File file = xprefs.getFile();
+                readable = file != null && file.canRead();
+                xprefs.reload();
+                Map<String, ?> all = xprefs.getAll();
+                size = all != null ? all.size() : -1;
+                XposedBridge.log(TAG + ": prefs readable=" + readable + " size=" + size);
 
-            Map<String, String> fresh = new HashMap<>();
-            if (xprefs != null) {
-                try {
-                    xprefs.reload();
-                    Map<String, ?> all = xprefs.getAll();
-                    if (all != null) {
-                        for (Map.Entry<String, ?> e : all.entrySet()) {
-                            fresh.put(e.getKey(), String.valueOf(e.getValue()));
-                        }
+                Map<String, String> fresh = new HashMap<>();
+                if (all != null) {
+                    for (Map.Entry<String, ?> e : all.entrySet()) {
+                        fresh.put(e.getKey(), String.valueOf(e.getValue()));
                     }
-                } catch (Throwable t) {
-                    XposedBridge.log(TAG + ": XSharedPreferences reload failed: " + t);
                 }
+                if (all != null && all.isEmpty() && file != null && file.exists()) {
+                    fresh.putAll(parsePrefsXml(file));
+                    XposedBridge.log(TAG + ": prefs xsp empty, direct xml parse size=" + fresh.size());
+                }
+                if (fresh.isEmpty()) {
+                    fresh.put(FALLBACK_SSID, FALLBACK_LABEL);
+                    XposedBridge.log(TAG + ": prefs empty/unreadable, using builtin fallback ("
+                            + FALLBACK_SSID + " -> " + FALLBACK_LABEL + ")");
+                }
+                MAPPING.clear();
+                MAPPING.putAll(fresh);
+            } catch (Throwable t) {
+                XposedBridge.log(TAG + ": prefs load failed, using builtin fallback: " + t);
+                MAPPING.clear();
+                MAPPING.put(FALLBACK_SSID, FALLBACK_LABEL);
             }
-            if (fresh.isEmpty()) {
-                fresh.putAll(parsePrefsXml(file));
-            }
-            MAPPING.clear();
-            MAPPING.putAll(fresh);
             return MAPPING;
         }
     }
