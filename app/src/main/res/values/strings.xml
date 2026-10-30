@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">WiFi Title Rename</string>
+    <string name="xposed_description">Change displayed WiFi names (WifiEntry.getTitle) without altering the real SSID</string>
+    <string name="field_ssid">SSID asli (persis seperti yang tampil)</string>
+    <string name="field_label">Nama tampilan baru</string>
+    <string name="hint_ssid">mis. Rumahku</string>
+    <string name="hint_label">mis. Internet Partikel</string>
+    <string name="btn_save">Tambah / Perbarui</string>
+    <string name="hint_usage">Ketik nama WiFi persis seperti yang tampil di daftar WiFi, lalu isi nama penggantinya. Ketuk entri untuk edit, tekan lama untuk hapus. Mapping tersimpan lokal via XSharedPreferences.</string>
+    <string name="empty">Belum ada mapping.\nAktifkan modul dan scope com.android.settings di LSPosed/Vector, lalu reboot.</string>
+    <string name="err_empty_ssid">SSID asli tidak boleh kosong</string>
+    <string name="err_empty_label">Nama tampilan tidak boleh kosong</string>
+    <string name="btn_delete">Hapus</string>
+    <string name="delete_title">Hapus mapping</string>
+    <string name="delete_msg">Hapus mapping untuk %1$s?</string>
+    <string name="toast_saved">Tersimpan</string>
+    <string name="toast_removed">Mapping dihapus, kembali pakai nama asli</string>
+</resources>
