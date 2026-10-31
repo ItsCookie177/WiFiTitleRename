@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = 'WiFiTitleRename'
-include ':app'
+rootProject.name = "WiFiTitleRename"
+include(":app")
