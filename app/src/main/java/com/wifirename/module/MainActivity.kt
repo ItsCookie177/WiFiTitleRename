@@ -32,7 +32,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun saveMapping(
-        mappings: MutableCollection<Mapping>,
+        mappings: MutableList<Mapping>,
         original: String?,
         ssid: String,
         label: String,
@@ -49,7 +49,7 @@ class MainActivity : ComponentActivity() {
         mappings.sortBy { it.ssid }
     }
 
-    private fun deleteMapping(mappings: MutableCollection<Mapping>, ssid: String) {
+    private fun deleteMapping(mappings: MutableList<Mapping>, ssid: String) {
         getSharedPreferences(Prefs.PREFS_NAME, MODE_PRIVATE).edit().remove(ssid).apply()
         Prefs.makeWorldReadable(this)
         mappings.removeAll { it.ssid == ssid }

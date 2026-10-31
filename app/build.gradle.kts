@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.wifirename.module"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.wifirename.module"
