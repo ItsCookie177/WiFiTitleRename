@@ -1,5 +1,6 @@
 package com.wifirename.module
 
+import android.util.Log
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -42,6 +43,8 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.darkColorScheme
 import top.yukonga.miuix.kmp.theme.lightColorScheme
 
+private const val LOG_TAG = "WifiRenameUI"
+
 data class Mapping(val ssid: String, val label: String)
 
 @Composable
@@ -68,6 +71,7 @@ fun MainScreen(
         },
         floatingActionButton = {
             FloatingActionButton(onClick = {
+                Log.d(LOG_TAG, "FAB clicked")
                 editingOriginal = null
                 ssidInput = ""
                 labelInput = ""
@@ -115,85 +119,98 @@ fun MainScreen(
                     MappingCard(
                         mapping = m,
                         onClick = {
+                            Log.d(LOG_TAG, "card clicked ${m.ssid}")
                             editingOriginal = m.ssid
                             ssidInput = m.ssid
                             labelInput = m.label
                             showEditor = true
                         },
-                        onDelete = { deleteTarget = m },
+                        onDelete = {
+                            Log.d(LOG_TAG, "delete clicked ${m.ssid}")
+                            deleteTarget = m
+                        },
                     )
                 }
             }
         }
-    }
 
-    OverlayDialog(
-        show = showEditor,
-        title = if (editingOriginal == null) "Tambah mapping" else "Edit mapping",
-        onDismissRequest = { showEditor = false },
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            TextField(
-                value = ssidInput,
-                onValueChange = { ssidInput = it },
-                label = "SSID asli (persis seperti yang tampil)",
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-            )
-            TextField(
-                value = labelInput,
-                onValueChange = { labelInput = it },
-                label = "Nama tampilan baru",
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-            )
-            val invalid = ssidInput.isBlank() || labelInput.isBlank()
-            if (invalid) {
-                Text(
-                    text = "Keduanya tidak boleh kosong",
-                    fontSize = 12.sp,
-                    color = MiuixTheme.colorScheme.error,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center,
-                )
+        if (showEditor) {
+            OverlayDialog(
+                show = showEditor,
+                title = if (editingOriginal == null) "Tambah mapping" else "Edit mapping",
+                onDismissRequest = { showEditor = false },
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    TextField(
+                        value = ssidInput,
+                        onValueChange = { ssidInput = it },
+                        label = "SSID asli (persis seperti yang tampil)",
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                    )
+                    TextField(
+                        value = labelInput,
+                        onValueChange = { labelInput = it },
+                        label = "Nama tampilan baru",
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                    )
+                    val invalid = ssidInput.isBlank() || labelInput.isBlank()
+                    if (invalid) {
+                        Text(
+                            text = "Keduanya tidak boleh kosong",
+                            fontSize = 12.sp,
+                            color = MiuixTheme.colorScheme.error,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                    TextButton(
+                        text = "Simpan",
+                        onClick = {
+                            Log.d(
+                                LOG_TAG,
+                                "save clicked original=$editingOriginal ssid=${ssidInput.trim()}",
+                            )
+                            onSave(editingOriginal, ssidInput.trim(), labelInput.trim())
+                            showEditor = false
+                        },
+                        enabled = !invalid,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    TextButton(
+                        text = "Batal",
+                        onClick = { showEditor = false },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
-            TextButton(
-                text = "Simpan",
-                onClick = {
-                    onSave(editingOriginal, ssidInput.trim(), labelInput.trim())
-                    showEditor = false
-                },
-                enabled = !invalid,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            TextButton(
-                text = "Batal",
-                onClick = { showEditor = false },
-                modifier = Modifier.fillMaxWidth(),
-            )
         }
-    }
 
-    OverlayDialog(
-        show = deleteTarget != null,
-        title = "Hapus mapping?",
-        summary = deleteTarget?.ssid,
-        onDismissRequest = { deleteTarget = null },
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            TextButton(
-                text = "Hapus",
-                onClick = {
-                    deleteTarget?.let { onDelete(it.ssid) }
-                    deleteTarget = null
-                },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            TextButton(
-                text = "Batal",
-                onClick = { deleteTarget = null },
-                modifier = Modifier.fillMaxWidth(),
-            )
+        if (deleteTarget != null) {
+            OverlayDialog(
+                show = deleteTarget != null,
+                title = "Hapus mapping?",
+                summary = deleteTarget?.ssid,
+                onDismissRequest = { deleteTarget = null },
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    TextButton(
+                        text = "Hapus",
+                        onClick = {
+                            Log.d(LOG_TAG, "confirm delete ${deleteTarget?.ssid}")
+                            deleteTarget?.let { onDelete(it.ssid) }
+                            deleteTarget = null
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    TextButton(
+                        text = "Batal",
+                        onClick = { deleteTarget = null },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
         }
     }
 }
