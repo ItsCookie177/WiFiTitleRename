@@ -10,6 +10,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -46,6 +48,8 @@ private const val LOG_TAG = "WifiRenameUI"
 
 enum class Tabs { MAPPING, SETTINGS }
 enum class RootPage { MAIN, ABOUT }
+
+data class Mapping(val ssid: String, val label: String)
 
 @Composable
 fun AppRoot(
@@ -165,7 +169,7 @@ fun AppRoot(
                     transitionSpec = {
                         val dir = if (targetState == Tabs.SETTINGS) 1 else -1
                         (slideInHorizontally(tween(220)) { dir * it / 5 } + fadeIn(tween(220))) togetherWith
-                            (fadeIn(tween(180)))
+                            fadeOut(tween(220))
                     },
                     label = "tabs",
                 ) { t ->
@@ -378,7 +382,6 @@ fun AppRoot(
                                 selected = themeMode == AppSettings.THEME_SYSTEM,
                                 onClick = {
                                     Log.d(LOG_TAG, "theme -> system")
-                                    themeMode = AppSettings.THEME_SYSTEM
                                     onThemeChanged(AppSettings.THEME_SYSTEM)
                                     showThemeAsk = false
                                 },
@@ -388,7 +391,6 @@ fun AppRoot(
                                 selected = themeMode == AppSettings.THEME_LIGHT,
                                 onClick = {
                                     Log.d(LOG_TAG, "theme -> light")
-                                    themeMode = AppSettings.THEME_LIGHT
                                     onThemeChanged(AppSettings.THEME_LIGHT)
                                     showThemeAsk = false
                                 },
@@ -398,7 +400,6 @@ fun AppRoot(
                                 selected = themeMode == AppSettings.THEME_DARK,
                                 onClick = {
                                     Log.d(LOG_TAG, "theme -> dark")
-                                    themeMode = AppSettings.THEME_DARK
                                     onThemeChanged(AppSettings.THEME_DARK)
                                     showThemeAsk = false
                                 },

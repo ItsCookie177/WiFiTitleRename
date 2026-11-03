@@ -40,6 +40,7 @@ android {
 dependencies {
     implementation("top.yukonga.miuix.kmp:miuix-ui:0.9.4")
     implementation("top.yukonga.miuix.kmp:miuix-preference:0.9.4")
+    implementation("top.yukonga.miuix.kmp:miuix-icons:0.9.4")
     implementation("androidx.activity:activity-compose:1.13.0")
     compileOnly(files("libs/api-82.jar"))
 }
