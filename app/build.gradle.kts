@@ -11,8 +11,8 @@ android {
         applicationId = "com.wifirename.module"
         minSdk = 31
         targetSdk = 35
-        versionCode = 3
-        versionName = "1.1.1"
+        versionCode = 4
+        versionName = "1.2.0"
     }
 
     buildTypes {
@@ -39,6 +39,7 @@ android {
 
 dependencies {
     implementation("top.yukonga.miuix.kmp:miuix-ui:0.9.4")
+    implementation("top.yukonga.miuix.kmp:miuix-preference:0.9.4")
     implementation("androidx.activity:activity-compose:1.13.0")
     compileOnly(files("libs/api-82.jar"))
 }
