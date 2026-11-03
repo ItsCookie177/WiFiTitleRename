@@ -67,7 +67,8 @@ fun AppRoot(
     var page by rememberSaveable { mutableStateOf(RootPage.MAIN) }
 
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
-    val scrollBehavior = MiuixScrollBehavior()
+    val mappingScrollBehavior = MiuixScrollBehavior()
+    val settingsScrollBehavior = MiuixScrollBehavior()
     var infoDismissed by rememberSaveable { mutableStateOf(false) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
 
@@ -122,10 +123,14 @@ fun AppRoot(
                             TopAppBar(
                                 title = "WiFi Title Rename",
                                 largeTitle = "WiFi Title Rename",
-                                scrollBehavior = scrollBehavior,
+                                scrollBehavior = mappingScrollBehavior,
                             )
                         } else {
-                            TopAppBar(title = "Pengaturan", largeTitle = "Pengaturan")
+                            TopAppBar(
+                                title = "Pengaturan",
+                                largeTitle = "Pengaturan",
+                                scrollBehavior = settingsScrollBehavior,
+                            )
                         }
                     }
                 },
@@ -177,7 +182,7 @@ fun AppRoot(
                         MappingContent(
                             mappings = mappings,
                             listState = listState,
-                            scrollBehavior = scrollBehavior,
+                            scrollBehavior = mappingScrollBehavior,
                             paddingValues = paddingValues,
                             infoDismissed = infoDismissed,
                             onInfoDismiss = {
@@ -202,6 +207,8 @@ fun AppRoot(
                         SettingsContent(
                             versionText = versionText,
                             themeMode = themeMode,
+                            scrollBehavior = settingsScrollBehavior,
+                            paddingValues = paddingValues,
                             onThemeClick = {
                                 Log.d(LOG_TAG, "theme dialog open")
                                 showThemeAsk = true

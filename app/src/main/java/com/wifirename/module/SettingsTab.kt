@@ -1,12 +1,15 @@
 package com.wifirename.module
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.preference.ArrowPreference
@@ -15,6 +18,8 @@ import top.yukonga.miuix.kmp.preference.ArrowPreference
 fun SettingsContent(
     versionText: String,
     themeMode: String,
+    scrollBehavior: ScrollBehavior,
+    paddingValues: PaddingValues,
     onThemeClick: () -> Unit,
     onExport: () -> Unit,
     onImport: () -> Unit,
@@ -28,14 +33,22 @@ fun SettingsContent(
     }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(
+            start = 16.dp,
+            end = 16.dp,
+            top = paddingValues.calculateTopPadding() + 12.dp,
+            bottom = paddingValues.calculateBottomPadding() + 24.dp,
+        ),
     ) {
         item(key = "g1-title") {
             SmallTitle(text = "Tampilan")
         }
         item(key = "g1-card") {
-            Card(insideMargin = PaddingValues(14.dp, 6.dp)) {
+            Card(insideMargin = PaddingValues(16.dp, 6.dp)) {
                 ArrowPreference(
                     title = "Tema",
                     summary = themeLabel,
@@ -48,7 +61,7 @@ fun SettingsContent(
             SmallTitle(text = "Backup & restore")
         }
         item(key = "g2-card") {
-            Card(insideMargin = PaddingValues(14.dp, 6.dp)) {
+            Card(insideMargin = PaddingValues(16.dp, 6.dp)) {
                 ArrowPreference(
                     title = "Ekspor mapping",
                     summary = "Simpan semua mapping ke file JSON",
@@ -66,7 +79,7 @@ fun SettingsContent(
             SmallTitle(text = "Lainnya")
         }
         item(key = "g3-card") {
-            Card(insideMargin = PaddingValues(14.dp, 6.dp)) {
+            Card(insideMargin = PaddingValues(16.dp, 6.dp)) {
                 ArrowPreference(
                     title = "Hapus semua mapping",
                     summary = "Tindakan ini tidak dapat dibatalkan",

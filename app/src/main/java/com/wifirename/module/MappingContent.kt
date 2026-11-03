@@ -2,21 +2,22 @@ package com.wifirename.module
 
 import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -61,27 +62,32 @@ fun MappingContent(
             .fillMaxSize()
             .nestedScroll(scrollBehavior.nestedScrollConnection),
         state = listState,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(
             start = 16.dp,
             end = 16.dp,
-            top = paddingValues.calculateTopPadding(),
-            bottom = paddingValues.calculateBottomPadding() + 16.dp,
+            top = paddingValues.calculateTopPadding() + 12.dp,
+            bottom = paddingValues.calculateBottomPadding() + 20.dp,
         ),
     ) {
         if (!infoDismissed) {
             item(key = "info") {
-                Card(
-                    insideMargin = PaddingValues(14.dp, 12.dp),
-                    modifier = Modifier.padding(bottom = 10.dp),
-                ) {
+                Card(insideMargin = PaddingValues(16.dp, 14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = "Aktifkan modul di Vector, centang scope Settings dan System UI, lalu restart System UI.",
                             modifier = Modifier.weight(1f),
-                            fontSize = 13.sp,
+                            fontSize = 14.sp,
                             color = MiuixTheme.colorScheme.onSurfaceContainerVariant,
                         )
-                        IconButton(onClick = onInfoDismiss) {
+                        IconButton(
+                            onClick = {
+                                Log.d(LOG_TAG, "info card dismissed")
+                                onInfoDismiss()
+                            },
+                            minWidth = 40.dp,
+                            minHeight = 40.dp,
+                        ) {
                             Icon(
                                 imageVector = MiuixIcons.Basic.Close,
                                 contentDescription = "Tutup",
@@ -99,10 +105,8 @@ fun MappingContent(
                 TextField(
                     value = searchQuery,
                     onValueChange = onSearchChanged,
-                    label = "Cari SSID",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 6.dp),
+                    label = "Cari nama WiFi",
+                    modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     leadingIcon = {
                         Icon(
@@ -121,7 +125,7 @@ fun MappingContent(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 64.dp),
+                        .padding(top = 72.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
@@ -132,9 +136,10 @@ fun MappingContent(
                         modifier = Modifier.size(36.dp),
                     )
                     Text(
-                        text = "Belum ada mapping. Tekan + untuk menambahkan.",
+                        text = "Belum ada mapping.\nTekan + untuk menambahkan.",
                         textAlign = TextAlign.Center,
                         fontSize = 14.sp,
+                        lineHeight = 20.sp,
                         color = MiuixTheme.colorScheme.onSurfaceContainerVariant,
                     )
                 }
@@ -175,7 +180,7 @@ private fun MappingListCard(
     onClick: () -> Unit,
     onDeleteTap: () -> Unit,
 ) {
-    Card(onClick = onClick, insideMargin = PaddingValues(14.dp, 12.dp)) {
+    Card(onClick = onClick, insideMargin = PaddingValues(16.dp, 14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = mapping.ssid,
@@ -183,31 +188,37 @@ private fun MappingListCard(
                 fontSize = 13.sp,
                 color = MiuixTheme.colorScheme.onSurfaceContainerVariant,
             )
-            IconButton(onClick = onDeleteTap) {
+            IconButton(
+                onClick = onDeleteTap,
+                minWidth = 40.dp,
+                minHeight = 40.dp,
+            ) {
                 Icon(
                     imageVector = MiuixIcons.Basic.Close,
                     contentDescription = "Hapus",
                     tint = MiuixTheme.colorScheme.onSurfaceContainerVariant,
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(15.dp),
                 )
             }
         }
-        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             Icon(
                 imageVector = MiuixIcons.Basic.ArrowRight,
                 contentDescription = null,
-                tint = MiuixTheme.colorScheme.onSurfaceContainerVariant,
-                modifier = Modifier
-                    .size(12.dp, 16.dp)
-                    .rotate(90f),
+                tint = MiuixTheme.colorScheme.primary,
+                modifier = Modifier.size(14.dp, 18.dp),
+            )
+            Text(
+                text = mapping.label,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f),
             )
         }
-        Text(
-            text = mapping.label,
-            modifier = Modifier.fillMaxWidth(),
-            fontSize = 17.sp,
-            fontWeight = FontWeight.SemiBold,
-        )
     }
 }
 
