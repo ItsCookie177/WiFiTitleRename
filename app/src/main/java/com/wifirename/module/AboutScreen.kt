@@ -66,6 +66,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -82,7 +83,7 @@ import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 private const val RepositoryUrl = "https://github.com/ItsCookie177/WiFiTitleRename"
-private const val LicenseUrl = "https://www.gnu.org/licenses/agpl-3.0.txt"
+private const val LicenseUrl = "https://github.com/ItsCookie177/WiFiTitleRename/blob/master/LICENSE"
 
 private val HeroHeight = 389.dp
 
@@ -500,8 +501,9 @@ private fun GradientAppName(modifier: Modifier = Modifier, gradient: List<Color>
             fontSize = 30.sp,
             fontWeight = FontWeight.Bold,
             brush = Brush.horizontalGradient(gradient),
+            textAlign = TextAlign.Center,
         ),
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
+        maxLines = 2,
+        overflow = TextOverflow.Clip,
     )
 }

@@ -290,7 +290,7 @@ private fun MappingRow(
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MiuixTheme.colorScheme.onSurface,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
@@ -298,7 +298,7 @@ private fun MappingRow(
                 modifier = Modifier.padding(top = 2.dp),
                 fontSize = 13.sp,
                 color = MiuixTheme.colorScheme.onSurfaceContainerVariant,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
         }

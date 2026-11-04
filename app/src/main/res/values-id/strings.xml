@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">WiFi Title Rename</string>
+    <string name="xposed_description">Mengganti nama WiFi yang tampil (WifiEntry.getTitle) tanpa mengubah SSID asli</string>
+
+    <string name="tab_mapping">Mapping</string>
+    <string name="tab_settings">Pengaturan</string>
+    <string name="title_settings">Pengaturan</string>
+
+    <string name="mapping_count">%1$d mapping</string>
+    <string name="summary_hint">Ketuk untuk edit, tahan untuk memilih</string>
+    <string name="summary_hint_selecting">Pilih mapping yang ingin dihapus</string>
+
+    <string name="guide_title">Aktifkan modul di Vector/LSPosed</string>
+    <string name="guide_body">Lalu restart SystemUI agar nama WiFi berubah.</string>
+    <string name="action_dismiss_guide">Tutup panduan aktivasi</string>
+    <string name="settings_guide">Panduan aktivasi</string>
+
+    <string name="search_hint">Cari nama WiFi</string>
+
+    <string name="empty_title">Belum ada mapping</string>
+    <string name="empty_body">Tambahkan SSID asli dan nama tampilan baru untuk mulai mengganti judul WiFi.</string>
+    <string name="no_results">Tidak ada mapping yang cocok</string>
+
+    <string name="add_mapping">Tambah mapping</string>
+    <string name="action_add_mapping">Tambah mapping</string>
+
+    <string name="action_exit_selection">Keluar dari mode pilih</string>
+    <string name="action_select_all">Pilih semua</string>
+    <string name="action_delete_selected">Hapus terpilih</string>
+    <string name="selected_count">%1$d dipilih</string>
+
+    <string name="edit_mapping_title">Edit mapping</string>
+    <string name="add_mapping_title">Tambah mapping</string>
+    <string name="field_ssid">SSID asli (persis seperti yang tampil)</string>
+    <string name="field_label">Nama tampilan baru</string>
+    <string name="error_required">Keduanya tidak boleh kosong</string>
+    <string name="save">Simpan</string>
+    <string name="cancel">Batal</string>
+    <string name="delete">Hapus</string>
+    <string name="delete_all">Hapus semua</string>
+
+    <string name="delete_mapping_title">Hapus mapping?</string>
+    <string name="delete_selected_title">Hapus %1$d mapping?</string>
+    <string name="delete_selected_body">Mapping yang dipilih akan dihapus permanen.</string>
+    <string name="delete_all_title">Hapus semua mapping?</string>
+    <string name="delete_all_body">Semua mapping akan dihapus permanen.</string>
+
+    <string name="subtitle_original">Asli: %1$s</string>
+
+    <string name="section_appearance">Tampilan</string>
+    <string name="setting_theme">Tema</string>
+    <string name="theme_system">Ikut sistem</string>
+    <string name="theme_light">Terang</string>
+    <string name="theme_dark">Gelap</string>
+
+    <string name="section_backup">Backup &amp; restore</string>
+    <string name="export_title">Ekspor mapping</string>
+    <string name="export_summary">Simpan semua mapping ke file JSON</string>
+    <string name="import_title">Impor mapping</string>
+    <string name="import_summary">Muat mapping dari file JSON</string>
+
+    <string name="section_other">Lainnya</string>
+    <string name="clear_all_title">Hapus semua mapping</string>
+    <string name="clear_all_summary">Tindakan ini tidak dapat dibatalkan</string>
+    <string name="settings_about">Tentang</string>
+
+    <string name="import_dialog_title">Impor mapping</string>
+    <string name="import_dialog_summary">Pilih cara menggabungkan mapping dari file JSON.</string>
+    <string name="import_merge">Gabung</string>
+    <string name="import_replace">Timpa</string>
+
+    <string name="toast_export_ok">%1$d mapping diekspor</string>
+    <string name="toast_export_failed">Ekspor gagal</string>
+    <string name="toast_import_ok">%1$d mapping diimpor</string>
+    <string name="toast_import_invalid">File kosong atau JSON tidak valid</string>
+
+    <string name="about_view_source">Lihat Sumber</string>
+    <string name="about_license">Lisensi</string>
+    <string name="about_third_party_heading">Lisensi Pihak Ketiga</string>
+    <string name="about_source_notice">Source harus tetap publik · AGPL-3.0</string>
+    <string name="about_ui_credit">UI oleh Miuix</string>
+    <string name="about_licenses_note">Setiap library dilisensikan oleh pemiliknya masing-masing.</string>
+    <string name="about_compile_only">API saat compile, tidak dibundel</string>
+    <string name="back">Kembali</string>
+</resources>
