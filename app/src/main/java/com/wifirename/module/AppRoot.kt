@@ -22,11 +22,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshots.SnapshotStateList
-import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -95,11 +93,11 @@ fun AppRoot(
 
     var selecting by rememberSaveable { mutableStateOf(false) }
     var selectedSsids by rememberSaveable(
-        saver = listSaver<SnapshotStateList<String>, String>(
+        stateSaver = Saver<Set<String>, List<String>>(
             save = { it.toList() },
-            restore = { it.toMutableStateList() },
+            restore = { it.toSet() },
         ),
-    ) { mutableStateListOf<String>() }
+    ) { mutableStateOf(emptySet<String>()) }
 
     var showEditor by rememberSaveable { mutableStateOf(false) }
     var editingOriginal by rememberSaveable { mutableStateOf<String?>(null) }
@@ -114,7 +112,7 @@ fun AppRoot(
 
     fun exitSelection() {
         selecting = false
-        selectedSsids.clear()
+        selectedSsids = emptySet()
     }
 
     fun openEditor(m: Mapping?) {
@@ -131,7 +129,7 @@ fun AppRoot(
     }
     LaunchedEffect(mappings.size, selectedSsids.size) {
         if (selecting) {
-            selectedSsids.retainAll { ssid -> mappings.any { it.ssid == ssid } }
+            selectedSsids = selectedSsids.intersect(mappings.map { it.ssid }.toSet())
             if (mappings.isEmpty()) exitSelection()
         }
     }
@@ -202,10 +200,10 @@ fun AppRoot(
                                             onClick = {
                                                 val all = visibleMappings.map { it.ssid }
                                                 val allSelected = all.isNotEmpty() && all.all { it in selectedSsids }
-                                                if (allSelected) {
-                                                    selectedSsids.removeAll(all.toSet())
+                                                selectedSsids = if (allSelected) {
+                                                    selectedSsids - all.toSet()
                                                 } else {
-                                                    all.forEach { if (it !in selectedSsids) selectedSsids.add(it) }
+                                                    selectedSsids + all
                                                 }
                                             },
                                             minWidth = 48.dp,
@@ -310,15 +308,18 @@ fun AppRoot(
                             selectedSsids = selectedSsids,
                             onRowClick = { m ->
                                 if (selecting) {
-                                    if (m.ssid in selectedSsids) selectedSsids.remove(m.ssid)
-                                    else selectedSsids.add(m.ssid)
+                                    selectedSsids = if (m.ssid in selectedSsids) {
+                                        selectedSsids - m.ssid
+                                    } else {
+                                        selectedSsids + m.ssid
+                                    }
                                 } else {
                                     openEditor(m)
                                 }
                             },
                             onRowLongClick = { m ->
                                 selecting = true
-                                if (m.ssid !in selectedSsids) selectedSsids.add(m.ssid)
+                                selectedSsids = selectedSsids + m.ssid
                             },
                             onAddClick = { openEditor(null) },
                         )

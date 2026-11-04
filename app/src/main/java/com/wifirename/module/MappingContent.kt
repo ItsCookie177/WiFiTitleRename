@@ -68,7 +68,7 @@ fun MappingContent(
     searchQuery: String,
     onSearchChanged: (String) -> Unit,
     selecting: Boolean,
-    selectedSsids: List<String>,
+    selectedSsids: Set<String>,
     onRowClick: (Mapping) -> Unit,
     onRowLongClick: (Mapping) -> Unit,
     onAddClick: () -> Unit,
