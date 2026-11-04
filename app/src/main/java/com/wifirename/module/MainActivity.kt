@@ -4,17 +4,20 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.theme.ThemeController
 import top.yukonga.miuix.kmp.theme.darkColorScheme
 import top.yukonga.miuix.kmp.theme.lightColorScheme
 import java.io.OutputStreamWriter
@@ -26,12 +29,32 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             var themeMode by remember { mutableStateOf(AppSettings.themeMode(this)) }
+            val systemDark = isSystemInDarkTheme()
             val dark = when (themeMode) {
                 AppSettings.THEME_LIGHT -> false
                 AppSettings.THEME_DARK -> true
-                else -> isSystemInDarkTheme()
+                else -> systemDark
             }
-            MiuixTheme(colors = if (dark) darkColorScheme() else lightColorScheme()) {
+            val controller = remember(themeMode, systemDark) {
+                ThemeController(
+                    colorSchemeMode = when (themeMode) {
+                        AppSettings.THEME_LIGHT -> ColorSchemeMode.Light
+                        AppSettings.THEME_DARK -> ColorSchemeMode.Dark
+                        else -> ColorSchemeMode.System
+                    },
+                    lightColors = lightColorScheme(),
+                    darkColors = darkColorScheme(),
+                    isDark = systemDark,
+                )
+            }
+            val view = LocalView.current
+            SideEffect {
+                WindowCompat.getInsetsController(window, view).apply {
+                    isAppearanceLightStatusBars = !dark
+                    isAppearanceLightNavigationBars = !dark
+                }
+            }
+            MiuixTheme(controller = controller) {
                 val mappings = remember {
                     mutableStateListOf<Mapping>().apply { addAll(AppSettings.loadMappings(this@MainActivity).map { Mapping(it.key, it.value) }) }
                 }
@@ -39,6 +62,7 @@ class MainActivity : ComponentActivity() {
                     mappings = mappings,
                     versionText = versionText(),
                     themeMode = themeMode,
+                    dark = dark,
                     onThemeChanged = { mode ->
                         themeMode = mode
                         AppSettings.setThemeMode(this, mode)
@@ -52,6 +76,10 @@ class MainActivity : ComponentActivity() {
                     onDelete = { ssid ->
                         AppSettings.deleteMapping(this, ssid)
                         mappings.removeAll { it.ssid == ssid }
+                    },
+                    onDeleteMany = { ssids ->
+                        AppSettings.deleteMappings(this, ssids)
+                        mappings.removeAll { it.ssid in ssids }
                     },
                     onClearAll = {
                         AppSettings.clearAll(this)
@@ -67,9 +95,9 @@ class MainActivity : ComponentActivity() {
     private fun versionText(): String {
         return try {
             val pi = packageManager.getPackageInfo(packageName, 0)
-            "v${pi.versionName ?: "1.2.0"} (${pi.longVersionCode and 0x7FFFFFFF})"
+            "v${pi.versionName ?: "1.3.0"} (${pi.longVersionCode and 0x7FFFFFFF})"
         } catch (_: Exception) {
-            "v1.2.0 (4)"
+            "v1.3.0 (6)"
         }
     }
 

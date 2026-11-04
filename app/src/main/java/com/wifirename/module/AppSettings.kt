@@ -43,6 +43,14 @@ object AppSettings {
         Prefs.makeWorldReadable(caller)
     }
 
+    fun deleteMappings(caller: Context, ssids: Collection<String>) {
+        if (ssids.isEmpty()) return
+        val editor = caller.getSharedPreferences(Prefs.PREFS_NAME, Context.MODE_PRIVATE).edit()
+        for (ssid in ssids) editor.remove(ssid)
+        editor.apply()
+        Prefs.makeWorldReadable(caller)
+    }
+
     fun exportJson(caller: Context): String {
         val o = JSONObject()
         o.put("version", 1)

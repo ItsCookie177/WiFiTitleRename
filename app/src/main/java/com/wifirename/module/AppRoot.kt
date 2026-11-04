@@ -2,6 +2,7 @@ package com.wifirename.module
 
 import android.net.Uri
 import android.util.Log
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -11,35 +12,39 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.NavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarItem
 import top.yukonga.miuix.kmp.basic.Scaffold
-import top.yukonga.miuix.kmp.basic.SmallTitle
+import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Add
+import top.yukonga.miuix.kmp.icon.extended.Close
+import top.yukonga.miuix.kmp.icon.extended.Delete
 import top.yukonga.miuix.kmp.icon.extended.ListView
+import top.yukonga.miuix.kmp.icon.extended.SelectAll
 import top.yukonga.miuix.kmp.icon.extended.Settings
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -56,9 +61,11 @@ fun AppRoot(
     mappings: List<Mapping>,
     versionText: String,
     themeMode: String,
+    dark: Boolean,
     onThemeChanged: (String) -> Unit,
     onSave: (original: String?, ssid: String, label: String) -> Unit,
     onDelete: (String) -> Unit,
+    onDeleteMany: (Collection<String>) -> Unit,
     onClearAll: () -> Unit,
     onExportPick: (Uri?) -> Unit,
     onImportPick: (Uri?, Boolean) -> Unit,
@@ -72,15 +79,37 @@ fun AppRoot(
     var infoDismissed by rememberSaveable { mutableStateOf(false) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
 
+    var selecting by rememberSaveable { mutableStateOf(false) }
+    val selectedSsids = remember { mutableStateListOf<String>() }
+
     var showEditor by rememberSaveable { mutableStateOf(false) }
     var editingOriginal by rememberSaveable { mutableStateOf<String?>(null) }
     var ssidInput by rememberSaveable { mutableStateOf("") }
     var labelInput by rememberSaveable { mutableStateOf("") }
     var deleteTarget by rememberSaveable { mutableStateOf<String?>(null) }
+    var showDeleteSelectedAsk by rememberSaveable { mutableStateOf(false) }
     var showImportAsk by rememberSaveable { mutableStateOf(false) }
     var pendingReplace by rememberSaveable { mutableStateOf(false) }
     var showClearAllAsk by rememberSaveable { mutableStateOf(false) }
     var showThemeAsk by rememberSaveable { mutableStateOf(false) }
+
+    fun exitSelection() {
+        selecting = false
+        selectedSsids.clear()
+    }
+
+    fun openEditor(m: Mapping?) {
+        editingOriginal = m?.ssid
+        ssidInput = m?.ssid ?: ""
+        labelInput = m?.label ?: ""
+        showEditor = true
+    }
+
+    val visibleMappings = filterMappings(mappings, searchQuery)
+
+    BackHandler(enabled = selecting) {
+        exitSelection()
+    }
 
     val exportPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json"),
@@ -110,7 +139,11 @@ fun AppRoot(
         label = "root",
     ) { current ->
         if (current == RootPage.ABOUT) {
-            AboutScreen(versionText = versionText, onBack = { page = RootPage.MAIN })
+            AboutScreen(
+                versionText = versionText,
+                dark = dark,
+                onBack = { page = RootPage.MAIN },
+            )
         } else {
             Scaffold(
                 topBar = {
@@ -120,11 +153,61 @@ fun AppRoot(
                         label = "topbar",
                     ) { t ->
                         if (t == Tabs.MAPPING) {
-                            TopAppBar(
-                                title = "WiFi Title Rename",
-                                largeTitle = "WiFi Title Rename",
-                                scrollBehavior = mappingScrollBehavior,
-                            )
+                            if (selecting) {
+                                SmallTopAppBar(
+                                    title = "${selectedSsids.size} dipilih",
+                                    navigationIcon = {
+                                        IconButton(onClick = { exitSelection() }) {
+                                            Icon(
+                                                imageVector = MiuixIcons.Close,
+                                                contentDescription = "Keluar dari mode pilih",
+                                            )
+                                        }
+                                    },
+                                    actions = {
+                                        IconButton(
+                                            onClick = {
+                                                val all = visibleMappings.map { it.ssid }
+                                                val allSelected = all.isNotEmpty() && all.all { it in selectedSsids }
+                                                if (allSelected) {
+                                                    selectedSsids.removeAll(all.toSet())
+                                                } else {
+                                                    all.forEach { if (it !in selectedSsids) selectedSsids.add(it) }
+                                                }
+                                            },
+                                        ) {
+                                            Icon(
+                                                imageVector = MiuixIcons.SelectAll,
+                                                contentDescription = "Pilih semua",
+                                            )
+                                        }
+                                        IconButton(
+                                            onClick = {
+                                                if (selectedSsids.isNotEmpty()) showDeleteSelectedAsk = true
+                                            },
+                                        ) {
+                                            Icon(
+                                                imageVector = MiuixIcons.Delete,
+                                                contentDescription = "Hapus terpilih",
+                                            )
+                                        }
+                                    },
+                                )
+                            } else {
+                                TopAppBar(
+                                    title = "WiFi Title Rename",
+                                    largeTitle = "WiFi Title Rename",
+                                    scrollBehavior = mappingScrollBehavior,
+                                    actions = {
+                                        IconButton(onClick = { openEditor(null) }) {
+                                            Icon(
+                                                imageVector = MiuixIcons.Add,
+                                                contentDescription = "Tambah mapping",
+                                            )
+                                        }
+                                    },
+                                )
+                            }
                         } else {
                             TopAppBar(
                                 title = "Pengaturan",
@@ -149,24 +232,13 @@ fun AppRoot(
                             selected = tab == Tabs.SETTINGS,
                             onClick = {
                                 Log.d(LOG_TAG, "tab -> settings")
+                                exitSelection()
                                 tab = Tabs.SETTINGS
                             },
                             icon = MiuixIcons.Settings,
                             label = "Pengaturan",
                         )
                     }
-                },
-                floatingActionButton = {
-                    MappingFab(
-                        visible = tab == Tabs.MAPPING,
-                        onClick = {
-                            Log.d(LOG_TAG, "FAB clicked")
-                            editingOriginal = null
-                            ssidInput = ""
-                            labelInput = ""
-                            showEditor = true
-                        },
-                    )
                 },
             ) { paddingValues ->
                 AnimatedContent(
@@ -181,6 +253,7 @@ fun AppRoot(
                     if (t == Tabs.MAPPING) {
                         MappingContent(
                             mappings = mappings,
+                            visibleMappings = visibleMappings,
                             listState = listState,
                             scrollBehavior = mappingScrollBehavior,
                             paddingValues = paddingValues,
@@ -191,17 +264,21 @@ fun AppRoot(
                             },
                             searchQuery = searchQuery,
                             onSearchChanged = { searchQuery = it },
-                            onCardClick = { m ->
-                                Log.d(LOG_TAG, "card clicked ${m.ssid}")
-                                editingOriginal = m.ssid
-                                ssidInput = m.ssid
-                                labelInput = m.label
-                                showEditor = true
+                            selecting = selecting,
+                            selectedSsids = selectedSsids,
+                            onRowClick = { m ->
+                                if (selecting) {
+                                    if (m.ssid in selectedSsids) selectedSsids.remove(m.ssid)
+                                    else selectedSsids.add(m.ssid)
+                                } else {
+                                    openEditor(m)
+                                }
                             },
-                            onDeleteClick = { m ->
-                                Log.d(LOG_TAG, "delete clicked ${m.ssid}")
-                                deleteTarget = m.ssid
+                            onRowLongClick = { m ->
+                                selecting = true
+                                if (m.ssid !in selectedSsids) selectedSsids.add(m.ssid)
                             },
+                            onAddClick = { openEditor(null) },
                         )
                     } else {
                         SettingsContent(
@@ -314,6 +391,34 @@ fun AppRoot(
                     }
                 }
 
+                if (showDeleteSelectedAsk) {
+                    val count = selectedSsids.size
+                    OverlayDialog(
+                        show = showDeleteSelectedAsk,
+                        title = "Hapus $count mapping?",
+                        summary = "Mapping yang dipilih akan dihapus permanen.",
+                        onDismissRequest = { showDeleteSelectedAsk = false },
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            TextButton(
+                                text = "Hapus",
+                                onClick = {
+                                    Log.d(LOG_TAG, "confirm delete-selected count=$count")
+                                    onDeleteMany(selectedSsids.toList())
+                                    showDeleteSelectedAsk = false
+                                    exitSelection()
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            TextButton(
+                                text = "Batal",
+                                onClick = { showDeleteSelectedAsk = false },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    }
+                }
+
                 if (showImportAsk) {
                     OverlayDialog(
                         show = showImportAsk,
@@ -365,6 +470,7 @@ fun AppRoot(
                                     Log.d(LOG_TAG, "confirm clear-all")
                                     onClearAll()
                                     showClearAllAsk = false
+                                    exitSelection()
                                 },
                                 modifier = Modifier.fillMaxWidth(),
                             )
