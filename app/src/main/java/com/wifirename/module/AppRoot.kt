@@ -16,18 +16,22 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -37,6 +41,7 @@ import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.basic.TextButtonColors
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
@@ -55,6 +60,14 @@ enum class Tabs { MAPPING, SETTINGS }
 enum class RootPage { MAIN, ABOUT }
 
 data class Mapping(val ssid: String, val label: String)
+
+@Composable
+fun dangerTextButtonColors(): TextButtonColors = ButtonDefaults.textButtonColors(
+    color = MiuixTheme.colorScheme.error,
+    textColor = MiuixTheme.colorScheme.onError,
+    disabledColor = MiuixTheme.colorScheme.errorContainer,
+    disabledTextColor = MiuixTheme.colorScheme.onErrorContainer,
+)
 
 @Composable
 fun AppRoot(
@@ -80,7 +93,12 @@ fun AppRoot(
     var searchQuery by rememberSaveable { mutableStateOf("") }
 
     var selecting by rememberSaveable { mutableStateOf(false) }
-    val selectedSsids = remember { mutableStateListOf<String>() }
+    var selectedSsids by rememberSaveable(
+        saver = listSaver(
+            save = { it.toList() },
+            restore = { it.toMutableStateList() },
+        ),
+    ) { mutableStateListOf<String>() }
 
     var showEditor by rememberSaveable { mutableStateOf(false) }
     var editingOriginal by rememberSaveable { mutableStateOf<String?>(null) }
@@ -106,6 +124,16 @@ fun AppRoot(
     }
 
     val visibleMappings = filterMappings(mappings, searchQuery)
+
+    LaunchedEffect(tab) {
+        if (selecting) exitSelection()
+    }
+    LaunchedEffect(mappings.size, selectedSsids.size) {
+        if (selecting) {
+            selectedSsids.retainAll { ssid -> mappings.any { it.ssid == ssid } }
+            if (mappings.isEmpty()) exitSelection()
+        }
+    }
 
     BackHandler(enabled = selecting) {
         exitSelection()
@@ -155,12 +183,16 @@ fun AppRoot(
                         if (t == Tabs.MAPPING) {
                             if (selecting) {
                                 SmallTopAppBar(
-                                    title = "${selectedSsids.size} dipilih",
+                                    title = stringResource(R.string.selected_count, selectedSsids.size),
                                     navigationIcon = {
-                                        IconButton(onClick = { exitSelection() }) {
+                                        IconButton(
+                                            onClick = { exitSelection() },
+                                            minWidth = 48.dp,
+                                            minHeight = 48.dp,
+                                        ) {
                                             Icon(
                                                 imageVector = MiuixIcons.Close,
-                                                contentDescription = "Keluar dari mode pilih",
+                                                contentDescription = stringResource(R.string.action_exit_selection),
                                             )
                                         }
                                     },
@@ -175,34 +207,43 @@ fun AppRoot(
                                                     all.forEach { if (it !in selectedSsids) selectedSsids.add(it) }
                                                 }
                                             },
+                                            minWidth = 48.dp,
+                                            minHeight = 48.dp,
                                         ) {
                                             Icon(
                                                 imageVector = MiuixIcons.SelectAll,
-                                                contentDescription = "Pilih semua",
+                                                contentDescription = stringResource(R.string.action_select_all),
                                             )
                                         }
                                         IconButton(
                                             onClick = {
                                                 if (selectedSsids.isNotEmpty()) showDeleteSelectedAsk = true
                                             },
+                                            minWidth = 48.dp,
+                                            minHeight = 48.dp,
                                         ) {
                                             Icon(
                                                 imageVector = MiuixIcons.Delete,
-                                                contentDescription = "Hapus terpilih",
+                                                contentDescription = stringResource(R.string.action_delete_selected),
+                                                tint = MiuixTheme.colorScheme.error,
                                             )
                                         }
                                     },
                                 )
                             } else {
                                 TopAppBar(
-                                    title = "WiFi Title Rename",
-                                    largeTitle = "WiFi Title Rename",
+                                    title = stringResource(R.string.app_name),
+                                    largeTitle = stringResource(R.string.app_name),
                                     scrollBehavior = mappingScrollBehavior,
                                     actions = {
-                                        IconButton(onClick = { openEditor(null) }) {
+                                        IconButton(
+                                            onClick = { openEditor(null) },
+                                            minWidth = 48.dp,
+                                            minHeight = 48.dp,
+                                        ) {
                                             Icon(
                                                 imageVector = MiuixIcons.Add,
-                                                contentDescription = "Tambah mapping",
+                                                contentDescription = stringResource(R.string.action_add_mapping),
                                             )
                                         }
                                     },
@@ -210,8 +251,8 @@ fun AppRoot(
                             }
                         } else {
                             TopAppBar(
-                                title = "Pengaturan",
-                                largeTitle = "Pengaturan",
+                                title = stringResource(R.string.title_settings),
+                                largeTitle = stringResource(R.string.title_settings),
                                 scrollBehavior = settingsScrollBehavior,
                             )
                         }
@@ -226,7 +267,7 @@ fun AppRoot(
                                 tab = Tabs.MAPPING
                             },
                             icon = MiuixIcons.ListView,
-                            label = "Mapping",
+                            label = stringResource(R.string.tab_mapping),
                         )
                         NavigationBarItem(
                             selected = tab == Tabs.SETTINGS,
@@ -236,7 +277,7 @@ fun AppRoot(
                                 tab = Tabs.SETTINGS
                             },
                             icon = MiuixIcons.Settings,
-                            label = "Pengaturan",
+                            label = stringResource(R.string.tab_settings),
                         )
                     }
                 },
@@ -302,6 +343,11 @@ fun AppRoot(
                                 Log.d(LOG_TAG, "clear-all mapping")
                                 showClearAllAsk = true
                             },
+                            onShowGuide = {
+                                Log.d(LOG_TAG, "show activation guide")
+                                infoDismissed = false
+                                tab = Tabs.MAPPING
+                            },
                             onOpenAbout = {
                                 Log.d(LOG_TAG, "about open")
                                 page = RootPage.ABOUT
@@ -315,28 +361,30 @@ fun AppRoot(
                 if (showEditor) {
                     OverlayDialog(
                         show = showEditor,
-                        title = if (editingOriginal == null) "Tambah mapping" else "Edit mapping",
+                        title = stringResource(
+                            if (editingOriginal == null) R.string.add_mapping_title else R.string.edit_mapping_title,
+                        ),
                         onDismissRequest = { showEditor = false },
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             TextField(
                                 value = ssidInput,
                                 onValueChange = { ssidInput = it },
-                                label = "SSID asli (persis seperti yang tampil)",
+                                label = stringResource(R.string.field_ssid),
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true,
                             )
                             TextField(
                                 value = labelInput,
                                 onValueChange = { labelInput = it },
-                                label = "Nama tampilan baru",
+                                label = stringResource(R.string.field_label),
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true,
                             )
                             val invalid = ssidInput.isBlank() || labelInput.isBlank()
                             if (invalid) {
                                 Text(
-                                    text = "Keduanya tidak boleh kosong",
+                                    text = stringResource(R.string.error_required),
                                     fontSize = 12.sp,
                                     color = MiuixTheme.colorScheme.error,
                                     modifier = Modifier.fillMaxWidth(),
@@ -344,7 +392,7 @@ fun AppRoot(
                                 )
                             }
                             TextButton(
-                                text = "Simpan",
+                                text = stringResource(R.string.save),
                                 onClick = {
                                     Log.d(
                                         LOG_TAG,
@@ -357,7 +405,7 @@ fun AppRoot(
                                 modifier = Modifier.fillMaxWidth(),
                             )
                             TextButton(
-                                text = "Batal",
+                                text = stringResource(R.string.cancel),
                                 onClick = { showEditor = false },
                                 modifier = Modifier.fillMaxWidth(),
                             )
@@ -368,22 +416,23 @@ fun AppRoot(
                 if (deleteTarget != null) {
                     OverlayDialog(
                         show = deleteTarget != null,
-                        title = "Hapus mapping?",
+                        title = stringResource(R.string.delete_mapping_title),
                         summary = deleteTarget,
                         onDismissRequest = { deleteTarget = null },
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             TextButton(
-                                text = "Hapus",
+                                text = stringResource(R.string.delete),
                                 onClick = {
                                     Log.d(LOG_TAG, "confirm delete ${deleteTarget}")
                                     deleteTarget?.let { onDelete(it) }
                                     deleteTarget = null
                                 },
+                                colors = dangerTextButtonColors(),
                                 modifier = Modifier.fillMaxWidth(),
                             )
                             TextButton(
-                                text = "Batal",
+                                text = stringResource(R.string.cancel),
                                 onClick = { deleteTarget = null },
                                 modifier = Modifier.fillMaxWidth(),
                             )
@@ -395,23 +444,24 @@ fun AppRoot(
                     val count = selectedSsids.size
                     OverlayDialog(
                         show = showDeleteSelectedAsk,
-                        title = "Hapus $count mapping?",
-                        summary = "Mapping yang dipilih akan dihapus permanen.",
+                        title = stringResource(R.string.delete_selected_title, count),
+                        summary = stringResource(R.string.delete_selected_body),
                         onDismissRequest = { showDeleteSelectedAsk = false },
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             TextButton(
-                                text = "Hapus",
+                                text = stringResource(R.string.delete),
                                 onClick = {
                                     Log.d(LOG_TAG, "confirm delete-selected count=$count")
                                     onDeleteMany(selectedSsids.toList())
                                     showDeleteSelectedAsk = false
                                     exitSelection()
                                 },
+                                colors = dangerTextButtonColors(),
                                 modifier = Modifier.fillMaxWidth(),
                             )
                             TextButton(
-                                text = "Batal",
+                                text = stringResource(R.string.cancel),
                                 onClick = { showDeleteSelectedAsk = false },
                                 modifier = Modifier.fillMaxWidth(),
                             )
@@ -422,13 +472,13 @@ fun AppRoot(
                 if (showImportAsk) {
                     OverlayDialog(
                         show = showImportAsk,
-                        title = "Impor mapping",
-                        summary = "Pilih cara menggabungkan mapping dari file JSON.",
+                        title = stringResource(R.string.import_dialog_title),
+                        summary = stringResource(R.string.import_dialog_summary),
                         onDismissRequest = { showImportAsk = false },
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             TextButton(
-                                text = "Gabung",
+                                text = stringResource(R.string.import_merge),
                                 onClick = {
                                     Log.d(LOG_TAG, "import mode=merge")
                                     pendingReplace = false
@@ -438,7 +488,7 @@ fun AppRoot(
                                 modifier = Modifier.fillMaxWidth(),
                             )
                             TextButton(
-                                text = "Timpa",
+                                text = stringResource(R.string.import_replace),
                                 onClick = {
                                     Log.d(LOG_TAG, "import mode=replace")
                                     pendingReplace = true
@@ -448,7 +498,7 @@ fun AppRoot(
                                 modifier = Modifier.fillMaxWidth(),
                             )
                             TextButton(
-                                text = "Batal",
+                                text = stringResource(R.string.cancel),
                                 onClick = { showImportAsk = false },
                                 modifier = Modifier.fillMaxWidth(),
                             )
@@ -459,23 +509,24 @@ fun AppRoot(
                 if (showClearAllAsk) {
                     OverlayDialog(
                         show = showClearAllAsk,
-                        title = "Hapus semua mapping?",
-                        summary = "Semua mapping akan dihapus permanen.",
+                        title = stringResource(R.string.delete_all_title),
+                        summary = stringResource(R.string.delete_all_body),
                         onDismissRequest = { showClearAllAsk = false },
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             TextButton(
-                                text = "Hapus semua",
+                                text = stringResource(R.string.delete_all),
                                 onClick = {
                                     Log.d(LOG_TAG, "confirm clear-all")
                                     onClearAll()
                                     showClearAllAsk = false
                                     exitSelection()
                                 },
+                                colors = dangerTextButtonColors(),
                                 modifier = Modifier.fillMaxWidth(),
                             )
                             TextButton(
-                                text = "Batal",
+                                text = stringResource(R.string.cancel),
                                 onClick = { showClearAllAsk = false },
                                 modifier = Modifier.fillMaxWidth(),
                             )
@@ -486,12 +537,12 @@ fun AppRoot(
                 if (showThemeAsk) {
                     OverlayDialog(
                         show = showThemeAsk,
-                        title = "Tema",
+                        title = stringResource(R.string.setting_theme),
                         onDismissRequest = { showThemeAsk = false },
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             ThemeOption(
-                                text = "Ikut sistem",
+                                text = stringResource(R.string.theme_system),
                                 selected = themeMode == AppSettings.THEME_SYSTEM,
                                 onClick = {
                                     Log.d(LOG_TAG, "theme -> system")
@@ -500,7 +551,7 @@ fun AppRoot(
                                 },
                             )
                             ThemeOption(
-                                text = "Terang",
+                                text = stringResource(R.string.theme_light),
                                 selected = themeMode == AppSettings.THEME_LIGHT,
                                 onClick = {
                                     Log.d(LOG_TAG, "theme -> light")
@@ -509,7 +560,7 @@ fun AppRoot(
                                 },
                             )
                             ThemeOption(
-                                text = "Gelap",
+                                text = stringResource(R.string.theme_dark),
                                 selected = themeMode == AppSettings.THEME_DARK,
                                 onClick = {
                                     Log.d(LOG_TAG, "theme -> dark")

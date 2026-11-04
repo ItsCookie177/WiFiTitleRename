@@ -4,37 +4,46 @@
  * Copyright (C) 2023-2026 HyperCeiler Contributions
  * Licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).
  *
- * The hero card layout (logo + app name + version, entrance animation) and the
- * preference-group structure of the About screen are ported from HyperCeiler's
- * AboutSettingsFragment / VersionCard (View/XML) to Jetpack Compose.
+ * Layout and behavior ported from HyperCeiler's AboutSettingsFragment / VersionCard
+ * (View/XML) to Jetpack Compose. Colors, gradient palettes and animation timings are
+ * taken from HyperCeiler's About resources:
+ *  - BgEffectDataManager (gradientColors1/2, phone light & dark palettes)
+ *  - values/colors.xml & values-night/colors.xml (app_version_text_color, card colors)
+ *  - VersionCard.performLogoAnimation (800ms decelerate alpha, -30dp/1000ms ease-out rise)
+ *  - AboutAnimationController (scroll fraction over app_logo_area_height = 389dp,
+ *    scale = 1 - 0.1 * fraction, alpha = 1 - fraction)
  */
 package com.wifirename.module
 
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.Easing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -43,10 +52,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -54,28 +60,108 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.CardDefaults
+import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 private const val RepositoryUrl = "https://github.com/ItsCookie177/WiFiTitleRename"
 private const val LicenseUrl = "https://www.gnu.org/licenses/agpl-3.0.txt"
 
-private val GradientDark = listOf(Color(0xFF243456), Color(0xFF33305F), Color(0xFF41305B))
-private val GradientLight = listOf(Color(0xFFD9E6F6), Color(0xFFE6E0F7), Color(0xFFF1E8F6))
-private val NameGradientDark = listOf(Color(0xFF7FB4FF), Color(0xFFC3A5FF))
-private val NameGradientLight = listOf(Color(0xFF2F6BDF), Color(0xFF7A45D6))
+private val HeroHeight = 389.dp
+
+// HyperCeiler BgEffectDataManager, phone light palette (gradientColors1 -> gradientColors2)
+private val LightPaletteA = listOf(
+    Color(1.0f, 0.90f, 0.94f),
+    Color(1.0f, 0.84f, 0.89f),
+    Color(0.97f, 0.73f, 0.82f),
+    Color(0.64f, 0.65f, 0.98f),
+)
+private val LightPaletteB = listOf(
+    Color(0.58f, 0.74f, 1.0f),
+    Color(1.0f, 0.90f, 0.93f),
+    Color(0.74f, 0.76f, 1.0f),
+    Color(0.97f, 0.77f, 0.84f),
+)
+
+// HyperCeiler BgEffectDataManager, phone dark palette (gradientColors1 -> gradientColors2)
+private val DarkPaletteA = listOf(
+    Color(0.20f, 0.06f, 0.88f, 0.40f),
+    Color(0.30f, 0.14f, 0.55f, 0.50f),
+    Color(0.00f, 0.64f, 0.96f, 0.50f),
+    Color(0.11f, 0.16f, 0.83f, 0.40f),
+)
+private val DarkPaletteB = listOf(
+    Color(0.07f, 0.15f, 0.79f, 0.50f),
+    Color(0.62f, 0.21f, 0.67f, 0.50f),
+    Color(0.06f, 0.25f, 0.84f, 0.50f),
+    Color(0.00f, 0.20f, 0.78f, 0.50f),
+)
+
+// Title gradient sampled from HyperCeiler's About screenshot (dark); darker variant for light.
+private val NameGradientDark = listOf(Color(0xFF5E82F5), Color(0xFF8C78EB))
+private val NameGradientLight = listOf(Color(0xFF3F63D8), Color(0xFF6E4FD0))
+
+// HyperCeiler app_version_text_color (#99ffffff dark, #99000000 light)
+private val VersionTextDark = Color(0x99FFFFFF)
+private val VersionTextLight = Color(0x99000000)
+
+private data class LicenseEntry(
+    val name: String,
+    val license: String,
+    val url: String,
+    val compileOnly: Boolean = false,
+)
+
+private val ThirdPartyLicenses = listOf(
+    LicenseEntry(
+        name = "Miuix (UI, Preference, Icons)",
+        license = "Apache-2.0",
+        url = "https://github.com/compose-miuix-ui/miuix",
+    ),
+    LicenseEntry(
+        name = "Compose Multiplatform",
+        license = "Apache-2.0",
+        url = "https://github.com/JetBrains/compose-multiplatform",
+    ),
+    LicenseEntry(
+        name = "AndroidX (Activity, Core, Lifecycle)",
+        license = "Apache-2.0",
+        url = "https://developer.android.com/jetpack/androidx",
+    ),
+    LicenseEntry(
+        name = "Kotlin Standard Library",
+        license = "Apache-2.0",
+        url = "https://kotlinlang.org",
+    ),
+    LicenseEntry(
+        name = "Xposed Framework API",
+        license = "Apache-2.0",
+        url = "https://github.com/rovo89/Xposed",
+        compileOnly = true,
+    ),
+    LicenseEntry(
+        name = "HyperCeiler (About page adapted)",
+        license = "AGPL-3.0",
+        url = "https://github.com/ReChronoRain/HyperCeiler",
+    ),
+)
 
 private fun openUrl(url: String, context: android.content.Context) {
     try {
@@ -84,271 +170,275 @@ private fun openUrl(url: String, context: android.content.Context) {
     }
 }
 
-data class LicenseEntry(val name: String, val license: String)
-
-private val ThirdPartyLicenses = listOf(
-    LicenseEntry("HyperCeiler (About page adapted)", "AGPL-3.0"),
-    LicenseEntry("Miuix (top.yukonga.miuix.kmp)", "Apache-2.0"),
-    LicenseEntry("Jetpack Compose / Compose Multiplatform", "Apache-2.0"),
-    LicenseEntry("AndroidX Activity-Compose", "Apache-2.0"),
-    LicenseEntry("Kotlin (kotlin-stdlib)", "Apache-2.0"),
-    LicenseEntry("Xposed Framework API (de.robv.android.xposed:api:82)", "Apache-2.0"),
-)
-
 @Composable
 fun AboutScreen(versionText: String, dark: Boolean, onBack: () -> Unit) {
-    var licensesOpen by rememberSaveable { mutableStateOf(false) }
+    BackHandler(enabled = true) { onBack() }
 
-    BackHandler(enabled = true) {
-        if (licensesOpen) licensesOpen = false else onBack()
-    }
-
-    AnimatedContent(
-        targetState = licensesOpen,
-        transitionSpec = {
-            if (targetState) {
-                (slideInHorizontally(tween(220)) { it / 3 } + fadeIn(tween(220))) togetherWith
-                    (slideOutHorizontally(tween(220)) { -it / 6 } + fadeOut(tween(200)))
-            } else {
-                (slideInHorizontally(tween(220)) { -it / 6 } + fadeIn(tween(220))) togetherWith
-                    (slideOutHorizontally(tween(220)) { it / 3 } + fadeOut(tween(200)))
-            }
-        },
-        label = "about",
-    ) { showLicenses ->
-        if (showLicenses) {
-            LicensesPage(dark = dark, onBack = { licensesOpen = false })
-        } else {
-            AboutMain(versionText = versionText, dark = dark, onBack = onBack) { licensesOpen = true }
-        }
-    }
-}
-
-private data class AboutColors(
-    val gradient: List<Color>,
-    val text: Color,
-    val secondary: Color,
-    val card: Color,
-    val onCard: Color,
-    val nameGradient: List<Color>,
-)
-
-@Composable
-private fun aboutColors(dark: Boolean) = if (dark) {
-    AboutColors(
-        gradient = GradientDark,
-        text = Color.White,
-        secondary = Color.White.copy(alpha = 0.55f),
-        card = Color.White.copy(alpha = 0.10f),
-        onCard = Color.White,
-        nameGradient = NameGradientDark,
-    )
-} else {
-    AboutColors(
-        gradient = GradientLight,
-        text = Color(0xFF15171C),
-        secondary = Color(0xFF15171C).copy(alpha = 0.55f),
-        card = Color.White.copy(alpha = 0.72f),
-        onCard = Color(0xFF15171C),
-        nameGradient = NameGradientLight,
-    )
-}
-
-@Composable
-private fun AboutLayout(
-    dark: Boolean,
-    scrolledTitle: String,
-    onBack: () -> Unit,
-    content: @Composable () -> Unit,
-) {
-    val colors = aboutColors(dark)
+    val context = LocalContext.current
     val scrollState = rememberScrollState()
-    val titleAlpha: Float = if (scrollState.value > 420) 1f else 0f
+    val density = LocalDensity.current
+    val heroPx = with(density) { HeroHeight.toPx() }
+    val fraction = (scrollState.value / heroPx).coerceIn(0f, 1f)
+
+    val titlesAlpha = ((fraction - 0.75f) / 0.25f).coerceIn(0f, 1f)
+    val textColor = if (dark) Color.White else Color(0xFF15171C)
+    val secondary = if (dark) Color.White.copy(alpha = 0.55f) else Color(0xFF15171C).copy(alpha = 0.55f)
+
+    val transition = rememberInfiniteTransition(label = "about-bg")
+    val blend by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 12000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "about-bg-blend",
+    )
+    val gradient = if (dark) {
+        DarkPaletteA.indices.map { i -> lerp(DarkPaletteA[i], DarkPaletteB[i], blend) }
+    } else {
+        LightPaletteA.indices.map { i -> lerp(LightPaletteA[i], LightPaletteB[i], blend) }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(colors.gradient)),
+            .background(if (dark) Color.Black else Color.White)
+            .background(Brush.verticalGradient(gradient)),
     ) {
-        content()
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            AboutHero(
+                versionText = versionText,
+                dark = dark,
+                fraction = fraction,
+                secondary = secondary,
+            )
+
+            Card(
+                modifier = Modifier
+                    .padding(horizontal = 20.dp)
+                    .fillMaxWidth(),
+                insideMargin = PaddingValues(16.dp, 6.dp),
+            ) {
+                ArrowPreference(
+                    title = stringResource(R.string.about_view_source),
+                    onClick = { openUrl(RepositoryUrl, context) },
+                    endActions = {
+                        Text(text = "GitHub", fontSize = 15.sp)
+                    },
+                )
+                ArrowPreference(
+                    title = stringResource(R.string.about_license),
+                    onClick = { openUrl(LicenseUrl, context) },
+                    endActions = {
+                        Text(text = "AGPL-3.0", fontSize = 15.sp)
+                    },
+                )
+            }
+
+            Text(
+                text = stringResource(R.string.about_third_party_heading),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 24.dp, end = 24.dp, top = 28.dp, bottom = 8.dp),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = secondary,
+            )
+
+            Card(
+                modifier = Modifier
+                    .padding(horizontal = 20.dp)
+                    .fillMaxWidth(),
+                insideMargin = PaddingValues(0.dp),
+            ) {
+                ThirdPartyLicenses.forEachIndexed { index, entry ->
+                    LicenseRow(entry = entry, secondary = secondary)
+                    if (index != ThirdPartyLicenses.lastIndex) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(start = 16.dp),
+                            thickness = 0.75.dp,
+                            color = MiuixTheme.colorScheme.dividerLine,
+                        )
+                    }
+                }
+            }
+
+            Text(
+                text = stringResource(R.string.about_licenses_note),
+                modifier = Modifier.padding(start = 36.dp, end = 36.dp, top = 12.dp),
+                fontSize = 12.sp,
+                color = secondary,
+            )
+            Spacer(modifier = Modifier.height(20.dp))
+            Text(
+                text = stringResource(R.string.about_source_notice),
+                fontSize = 12.sp,
+                color = secondary.copy(alpha = 0.75f),
+            )
+            Text(
+                text = stringResource(R.string.about_ui_credit),
+                modifier = Modifier.padding(top = 6.dp, bottom = 32.dp),
+                fontSize = 12.sp,
+                color = secondary.copy(alpha = 0.75f),
+            )
+        }
+
         Box(
             modifier = Modifier
                 .windowInsetsPadding(WindowInsets.statusBars)
                 .padding(start = 6.dp)
                 .align(Alignment.TopStart),
         ) {
-            IconButton(onClick = onBack) {
+            IconButton(
+                onClick = onBack,
+                minWidth = 48.dp,
+                minHeight = 48.dp,
+            ) {
                 Icon(
                     imageVector = MiuixIcons.Back,
-                    contentDescription = "Kembali",
-                    tint = colors.text,
+                    contentDescription = stringResource(R.string.back),
+                    tint = textColor,
                 )
             }
         }
+
         Text(
-            text = scrolledTitle,
+            text = stringResource(R.string.settings_about),
             modifier = Modifier
-                .graphicsLayer { alpha = titleAlpha }
+                .graphicsLayer { alpha = titlesAlpha }
                 .windowInsetsPadding(WindowInsets.statusBars)
-                .padding(top = 10.dp)
+                .padding(top = 12.dp)
                 .align(Alignment.TopCenter),
             fontSize = 18.sp,
             fontWeight = FontWeight.SemiBold,
-            color = colors.text,
+            color = textColor,
         )
     }
 }
 
 @Composable
-private fun AboutMain(versionText: String, dark: Boolean, onBack: () -> Unit, onOpenLicenses: () -> Unit) {
-    val context = LocalContext.current
-    val colors = aboutColors(dark)
-    val enter = remember { Animatable(0f) }
+private fun AboutHero(
+    versionText: String,
+    dark: Boolean,
+    fraction: Float,
+    secondary: Color,
+) {
+    val density = LocalDensity.current
+    val alpha = remember { Animatable(0f) }
+    val rise = remember { Animatable(0f) }
+
     LaunchedEffect(Unit) {
-        enter.animateTo(1f, tween(durationMillis = 360, easing = FastOutSlowInEasing))
-    }
-
-    AboutLayout(dark = dark, scrolledTitle = "Tentang", onBack = onBack) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Column(
-                modifier = Modifier
-                    .windowInsetsPadding(WindowInsets.statusBars)
-                    .padding(top = 64.dp)
-                    .graphicsLayer {
-                        val p = enter.value
-                        alpha = p
-                        val scale = 0.94f + 0.06f * p
-                        scaleX = scale
-                        scaleY = scale
-                        translationY = (1f - p) * 40f
-                    },
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Box(
-                        modifier = Modifier
-                            .size(150.dp)
-                            .background(
-                                Brush.radialGradient(
-                                    listOf(
-                                        colors.nameGradient.first().copy(alpha = 0.30f),
-                                        colors.nameGradient.last().copy(alpha = 0.10f),
-                                        Color.Transparent,
-                                    ),
-                                ),
-                                CircleShape,
-                            ),
-                    )
-                    AppLogo()
-                }
-                GradientAppName(
-                    modifier = Modifier.padding(top = 16.dp),
-                    gradient = colors.nameGradient,
-                )
-                Text(
-                    text = versionText,
-                    modifier = Modifier.padding(top = 8.dp),
-                    fontSize = 14.sp,
-                    color = colors.secondary,
-                )
-            }
-
-            Spacer(modifier = Modifier.height(56.dp))
-
-            Card(
-                modifier = Modifier
-                    .padding(horizontal = 20.dp)
-                    .fillMaxWidth(),
-                insideMargin = androidx.compose.foundation.layout.PaddingValues(16.dp, 6.dp),
-                colors = CardDefaults.defaultColors(
-                    color = colors.card,
-                    contentColor = colors.onCard,
+        launch {
+            alpha.animateTo(
+                1f,
+                tween(
+                    durationMillis = 800,
+                    easing = Easing { 1f - (1f - it) * (1f - it) },
                 ),
-            ) {
-                ArrowPreference(
-                    title = "View Source",
-                    onClick = { openUrl(RepositoryUrl, context) },
-                    endActions = {
-                        Text(
-                            text = "GitHub",
-                            fontSize = 15.sp,
-                            color = colors.secondary,
-                        )
-                    },
-                )
-                ArrowPreference(
-                    title = "License",
-                    onClick = { openUrl(LicenseUrl, context) },
-                    endActions = {
-                        Text(
-                            text = "AGPL-3.0",
-                            fontSize = 15.sp,
-                            color = colors.secondary,
-                        )
-                    },
-                )
-                ArrowPreference(
-                    title = "Third Party Licenses",
-                    onClick = onOpenLicenses,
-                )
-            }
-
-            Text(
-                text = "Source must remain public · AGPL-3.0",
-                modifier = Modifier.padding(top = 16.dp),
-                fontSize = 12.sp,
-                color = colors.secondary.copy(alpha = 0.75f),
-            )
-            Text(
-                text = "UI by Miuix",
-                modifier = Modifier.padding(top = 6.dp, bottom = 32.dp),
-                fontSize = 12.sp,
-                color = colors.secondary.copy(alpha = 0.75f),
             )
         }
+        launch {
+            delay(100)
+            rise.animateTo(
+                1f,
+                tween(
+                    durationMillis = 1000,
+                    easing = CubicBezierEasing(0.215f, 0.61f, 0.355f, 1f),
+                ),
+            )
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = HeroHeight)
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .graphicsLayer {
+                val scrollAlpha = 1f - fraction
+                this.alpha = alpha.value * scrollAlpha
+                val scale = 1f - 0.1f * fraction
+                scaleX = scale
+                scaleY = scale
+                translationY = with(density) { 30.dp.toPx() } * (1f - rise.value)
+            }
+            .padding(top = 64.dp, bottom = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .size(150.dp)
+                    .background(
+                        Brush.radialGradient(
+                            listOf(
+                                Color(0xFF5E82F5).copy(alpha = if (dark) 0.30f else 0.20f),
+                                Color(0xFF8C78EB).copy(alpha = if (dark) 0.10f else 0.08f),
+                                Color.Transparent,
+                            ),
+                        ),
+                        CircleShape,
+                    ),
+            )
+            AppLogo()
+        }
+        GradientAppName(
+            modifier = Modifier.padding(top = 16.dp),
+            gradient = if (dark) NameGradientDark else NameGradientLight,
+        )
+        Text(
+            text = versionText,
+            modifier = Modifier.padding(top = 8.dp),
+            fontSize = 14.sp,
+            color = if (dark) VersionTextDark else VersionTextLight,
+        )
     }
 }
 
 @Composable
-private fun LicensesPage(dark: Boolean, onBack: () -> Unit) {
-    val colors = aboutColors(dark)
-    AboutLayout(dark = dark, scrolledTitle = "Third Party Licenses", onBack = onBack) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .padding(top = 64.dp, bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Card(
-                modifier = Modifier
-                    .padding(horizontal = 20.dp)
-                    .fillMaxWidth(),
-                insideMargin = androidx.compose.foundation.layout.PaddingValues(16.dp, 6.dp),
-                colors = CardDefaults.defaultColors(
-                    color = colors.card,
-                    contentColor = colors.onCard,
-                ),
-            ) {
-                ThirdPartyLicenses.forEach { entry ->
-                    ArrowPreference(
-                        title = entry.name,
-                        summary = entry.license,
-                    )
-                }
-            }
+private fun LicenseRow(entry: LicenseEntry, secondary: Color) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Text(
+            text = entry.name,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = "Setiap library dilisensikan oleh pemiliknya masing-masing.",
-                modifier = Modifier.padding(horizontal = 36.dp),
+                text = entry.license,
+                modifier = Modifier.padding(top = 2.dp),
                 fontSize = 12.sp,
-                color = colors.secondary,
+                color = secondary,
             )
+            if (entry.compileOnly) {
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "· " + stringResource(R.string.about_compile_only),
+                    modifier = Modifier.padding(top = 2.dp),
+                    fontSize = 12.sp,
+                    color = secondary,
+                )
+            }
         }
+        Text(
+            text = entry.url,
+            modifier = Modifier.padding(top = 2.dp),
+            fontSize = 12.sp,
+            color = secondary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

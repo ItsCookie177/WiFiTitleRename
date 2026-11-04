@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -23,9 +24,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import top.yukonga.miuix.kmp.basic.Card
@@ -84,7 +87,7 @@ fun MappingContent(
         ),
     ) {
         item(key = "summary") {
-            SummaryCard(count = mappings.size)
+            SummaryCard(count = mappings.size, selecting = selecting)
         }
 
         if (!infoDismissed) {
@@ -99,12 +102,13 @@ fun MappingContent(
                     value = searchQuery,
                     onValueChange = onSearchChanged,
                     modifier = Modifier.fillMaxWidth(),
-                    label = "Cari nama WiFi",
+                    insideMargin = DpSize(16.dp, 12.dp),
+                    label = stringResource(R.string.search_hint),
                     leadingIcon = {
                         Icon(
                             imageVector = MiuixIcons.Basic.Search,
                             contentDescription = null,
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.padding(start = 2.dp, end = 8.dp).size(18.dp),
                             tint = MiuixTheme.colorScheme.onSurfaceContainerVariant,
                         )
                     },
@@ -113,7 +117,7 @@ fun MappingContent(
             }
         }
 
-        if (mappings.isEmpty()) {
+        if (mappings.isEmpty() && !selecting) {
             item(key = "empty") {
                 EmptyCard()
             }
@@ -122,11 +126,11 @@ fun MappingContent(
         item(key = "group") {
             Card(insideMargin = PaddingValues(0.dp)) {
                 Column {
-                    if (mappings.isEmpty()) {
+                    if (mappings.isEmpty() && !selecting) {
                         AddMappingRow(onClick = onAddClick)
                     } else if (visibleMappings.isEmpty()) {
                         Text(
-                            text = "Tidak ada mapping yang cocok",
+                            text = stringResource(R.string.no_results),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp, vertical = 20.dp),
@@ -134,12 +138,14 @@ fun MappingContent(
                             color = MiuixTheme.colorScheme.onSurfaceContainerVariant,
                             textAlign = TextAlign.Center,
                         )
-                        HorizontalDivider(
-                            modifier = Modifier.padding(start = 16.dp),
-                            thickness = 0.75.dp,
-                            color = MiuixTheme.colorScheme.dividerLine,
-                        )
-                        AddMappingRow(onClick = onAddClick)
+                        if (!selecting) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(start = 16.dp),
+                                thickness = 0.75.dp,
+                                color = MiuixTheme.colorScheme.dividerLine,
+                            )
+                            AddMappingRow(onClick = onAddClick)
+                        }
                     } else {
                         visibleMappings.forEachIndexed { index, mapping ->
                             MappingRow(
@@ -157,12 +163,14 @@ fun MappingContent(
                                 )
                             }
                         }
-                        HorizontalDivider(
-                            modifier = Modifier.padding(start = 16.dp),
-                            thickness = 0.75.dp,
-                            color = MiuixTheme.colorScheme.dividerLine,
-                        )
-                        AddMappingRow(onClick = onAddClick)
+                        if (!selecting) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(start = 16.dp),
+                                thickness = 0.75.dp,
+                                color = MiuixTheme.colorScheme.dividerLine,
+                            )
+                            AddMappingRow(onClick = onAddClick)
+                        }
                     }
                 }
             }
@@ -171,12 +179,10 @@ fun MappingContent(
 }
 
 @Composable
-private fun SummaryCard(count: Int) {
-    Card {
+private fun SummaryCard(count: Int, selecting: Boolean) {
+    Card(insideMargin = PaddingValues(16.dp, 14.dp)) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
@@ -195,13 +201,15 @@ private fun SummaryCard(count: Int) {
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "$count mapping",
+                    text = stringResource(R.string.mapping_count, count),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = MiuixTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = "Ketuk untuk edit, tahan untuk memilih",
+                    text = stringResource(
+                        if (selecting) R.string.summary_hint_selecting else R.string.summary_hint,
+                    ),
                     modifier = Modifier.padding(top = 2.dp),
                     fontSize = 13.sp,
                     color = MiuixTheme.colorScheme.onSurfaceContainerVariant,
@@ -217,22 +225,26 @@ private fun InfoCard(onDismiss: () -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Aktifkan modul di Vector/LSPosed",
+                    text = stringResource(R.string.guide_title),
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = MiuixTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = "Lalu restart SystemUI agar nama WiFi berubah.",
+                    text = stringResource(R.string.guide_body),
                     modifier = Modifier.padding(top = 2.dp),
                     fontSize = 13.sp,
                     color = MiuixTheme.colorScheme.onSurfaceContainerVariant,
                 )
             }
-            IconButton(onClick = onDismiss) {
+            IconButton(
+                onClick = onDismiss,
+                minWidth = 48.dp,
+                minHeight = 48.dp,
+            ) {
                 Icon(
                     imageVector = MiuixIcons.Basic.Close,
-                    contentDescription = "Tutup info",
+                    contentDescription = stringResource(R.string.action_dismiss_guide),
                     modifier = Modifier.size(16.dp),
                     tint = MiuixTheme.colorScheme.onSurfaceContainerVariant,
                 )
@@ -261,6 +273,7 @@ private fun MappingRow(
                     onLongClick()
                 },
             )
+            .heightIn(min = 56.dp)
             .padding(horizontal = 16.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -281,7 +294,7 @@ private fun MappingRow(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = "Asli: ${mapping.ssid}",
+                text = stringResource(R.string.subtitle_original, mapping.ssid),
                 modifier = Modifier.padding(top = 2.dp),
                 fontSize = 13.sp,
                 color = MiuixTheme.colorScheme.onSurfaceContainerVariant,
@@ -299,6 +312,7 @@ private fun AddMappingRow(onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .combinedClickable(onClick = onClick)
+            .heightIn(min = 56.dp)
             .padding(horizontal = 16.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -317,7 +331,7 @@ private fun AddMappingRow(onClick: () -> Unit) {
         }
         Spacer(modifier = Modifier.width(12.dp))
         Text(
-            text = "Tambah mapping",
+            text = stringResource(R.string.add_mapping),
             fontSize = 16.sp,
             fontWeight = FontWeight.Medium,
             color = MiuixTheme.colorScheme.primary,
@@ -348,14 +362,14 @@ private fun EmptyCard() {
                 )
             }
             Text(
-                text = "Belum ada mapping",
+                text = stringResource(R.string.empty_title),
                 modifier = Modifier.padding(top = 12.dp),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MiuixTheme.colorScheme.onSurface,
             )
             Text(
-                text = "Tambahkan SSID dan nama tampilan baru untuk mulai mengganti judul WiFi.",
+                text = stringResource(R.string.empty_body),
                 modifier = Modifier.padding(top = 4.dp, start = 24.dp, end = 24.dp),
                 fontSize = 13.sp,
                 color = MiuixTheme.colorScheme.onSurfaceContainerVariant,
@@ -372,6 +386,7 @@ fun ThemeOption(text: String, selected: Boolean, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .combinedClickable(onClick = onClick)
+            .heightIn(min = 48.dp)
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

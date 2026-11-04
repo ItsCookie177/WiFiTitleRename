@@ -1,12 +1,13 @@
 package com.wifirename.module
 
-import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -55,9 +56,16 @@ class MainActivity : ComponentActivity() {
                 }
             }
             MiuixTheme(controller = controller) {
-                val mappings = remember {
-                    mutableStateListOf<Mapping>().apply { addAll(AppSettings.loadMappings(this@MainActivity).map { Mapping(it.key, it.value) }) }
+                val mappings = remember { mutableStateListOf<Mapping>() }
+
+                fun reloadMappings() {
+                    val loaded = AppSettings.loadMappings(this@MainActivity)
+                    mappings.clear()
+                    mappings.addAll(loaded.map { Mapping(it.key, it.value) })
                 }
+
+                LaunchedEffect(Unit) { reloadMappings() }
+
                 AppRoot(
                     mappings = mappings,
                     versionText = versionText(),
@@ -69,24 +77,46 @@ class MainActivity : ComponentActivity() {
                     },
                     onSave = { original, ssid, label ->
                         AppSettings.saveMapping(this, original, ssid, label)
-                        mappings.removeAll { it.ssid == ssid || (original != null && it.ssid == original) }
-                        mappings.add(Mapping(ssid, label))
-                        mappings.sortBy { it.ssid }
+                        reloadMappings()
                     },
                     onDelete = { ssid ->
                         AppSettings.deleteMapping(this, ssid)
-                        mappings.removeAll { it.ssid == ssid }
+                        reloadMappings()
                     },
                     onDeleteMany = { ssids ->
                         AppSettings.deleteMappings(this, ssids)
-                        mappings.removeAll { it.ssid in ssids }
+                        reloadMappings()
                     },
                     onClearAll = {
                         AppSettings.clearAll(this)
-                        mappings.clear()
+                        reloadMappings()
                     },
-                    onExportPick = { uri -> exportMappings(uri) },
-                    onImportPick = { uri, replace -> importMappings(uri, replace) },
+                    onExportPick = { uri ->
+                        val count = exportMappings(uri)
+                        val msg = if (count == null) {
+                            getString(R.string.toast_export_failed)
+                        } else {
+                            getString(R.string.toast_export_ok, count)
+                        }
+                        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+                    },
+                    onImportPick = { uri, replace ->
+                        val count = importMappings(uri, replace)
+                        if (count == null) {
+                            Toast.makeText(
+                                this,
+                                getString(R.string.toast_import_invalid),
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        } else {
+                            reloadMappings()
+                            Toast.makeText(
+                                this,
+                                getString(R.string.toast_import_ok, count),
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        }
+                    },
                 )
             }
         }
@@ -95,34 +125,39 @@ class MainActivity : ComponentActivity() {
     private fun versionText(): String {
         return try {
             val pi = packageManager.getPackageInfo(packageName, 0)
-            "v${pi.versionName ?: "1.3.0"} (${pi.longVersionCode and 0x7FFFFFFF})"
+            "v${pi.versionName ?: "1.4.0"} (${pi.longVersionCode and 0x7FFFFFFF})"
         } catch (_: Exception) {
-            "v1.3.0 (6)"
+            "v1.4.0 (7)"
         }
     }
 
-    private fun exportMappings(uri: Uri?) {
-        if (uri == null) return
-        try {
+    private fun exportMappings(uri: Uri?): Int? {
+        if (uri == null) return null
+        return try {
+            val mappings = AppSettings.loadMappings(this)
             contentResolver.openOutputStream(uri)?.use { os ->
                 OutputStreamWriter(os, Charsets.UTF_8).use { w ->
                     w.write(AppSettings.exportJson(this))
                     w.flush()
                 }
-            }
+            } ?: return null
+            mappings.size
         } catch (_: Exception) {
+            null
         }
     }
 
-    private fun importMappings(uri: Uri?, replace: Boolean) {
-        if (uri == null) return
-        try {
+    private fun importMappings(uri: Uri?, replace: Boolean): Int? {
+        if (uri == null) return null
+        return try {
             val text = contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) }
-                ?: return
-            val parsed = AppSettings.parseImport(this, text) ?: return
-            if (parsed.isEmpty()) return
+                ?: return null
+            val parsed = AppSettings.parseImport(this, text)
+            if (parsed.isNullOrEmpty()) return null
             if (replace) AppSettings.replaceMappings(this, parsed) else AppSettings.mergeMappings(this, parsed)
+            parsed.size
         } catch (_: Exception) {
+            null
         }
     }
 }

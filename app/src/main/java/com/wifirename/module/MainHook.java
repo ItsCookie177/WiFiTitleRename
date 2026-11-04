@@ -256,11 +256,21 @@ public final class MainHook implements IXposedHookLoadPackage {
             if (v == null) {
                 v = map.get("\"" + unquoted + "\"");
             }
+            if (v == null) {
+                String normalized = normalizeLookupKey(unquoted);
+                if (!normalized.equals(unquoted)) {
+                    v = map.get(normalized);
+                }
+            }
         }
         if (v != null && v.isEmpty()) {
             return null;
         }
         return v;
+    }
+
+    private static String normalizeLookupKey(String s) {
+        return s.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ').trim();
     }
 
     private static String stripQuotes(String s) {
