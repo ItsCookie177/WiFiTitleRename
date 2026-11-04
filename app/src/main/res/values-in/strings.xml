@@ -82,5 +82,13 @@
     <string name="about_ui_credit">UI oleh Miuix</string>
     <string name="about_licenses_note">Setiap library dilisensikan oleh pemiliknya masing-masing.</string>
     <string name="about_compile_only">API saat compile, tidak dibundel</string>
+    <string name="about_device_name">Nama perangkat</string>
+    <string name="about_device_model">Model</string>
+    <string name="about_storage">Penyimpanan</string>
+    <string name="about_os_version">Versi OS</string>
+    <string name="about_android_version">Versi Android</string>
+    <string name="about_security_patch">Update keamanan Android</string>
+    <string name="about_copied">Disalin</string>
+    <string name="about_copy_value">Salin nilai</string>
     <string name="back">Kembali</string>
 </resources>

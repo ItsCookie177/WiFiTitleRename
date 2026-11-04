@@ -12,11 +12,23 @@
  *  - VersionCard.performLogoAnimation (800ms decelerate alpha, -30dp/1000ms ease-out rise)
  *  - AboutAnimationController (scroll fraction over app_logo_area_height = 389dp,
  *    scale = 1 - 0.1 * fraction, alpha = 1 - fraction)
+ *
+ * The device-info card is modeled after HyperOS "About phone" (Tentang ponsel):
+ * large thin gradient app name, small version line, then rounded info cards whose
+ * values are copied to the clipboard on tap.
  */
 package com.wifirename.module
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.os.StatFs
+import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
@@ -27,8 +39,8 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,52 +52,59 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Copy
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import java.util.Locale
 
 private const val RepositoryUrl = "https://github.com/ItsCookie177/WiFiTitleRename"
 private const val LicenseUrl = "https://github.com/ItsCookie177/WiFiTitleRename/blob/master/LICENSE"
 
-private val HeroHeight = 389.dp
+private val HeroHeight = 320.dp
+private val CardMargin = 12.dp
 
 // HyperCeiler BgEffectDataManager, phone light palette (gradientColors1 -> gradientColors2)
 private val LightPaletteA = listOf(
@@ -115,9 +134,10 @@ private val DarkPaletteB = listOf(
     Color(0.00f, 0.20f, 0.78f, 0.50f),
 )
 
-// Title gradient sampled from HyperCeiler's About screenshot (dark); darker variant for light.
-private val NameGradientDark = listOf(Color(0xFF5E82F5), Color(0xFF8C78EB))
-private val NameGradientLight = listOf(Color(0xFF3F63D8), Color(0xFF6E4FD0))
+// Title gradient sampled from the HyperOS "About phone" header (magenta -> peach).
+// The light-theme variant is darkened to keep contrast on the pastel background.
+private val NameGradientDark = listOf(Color(0xFFE37DE6), Color(0xFFF0B2AA))
+private val NameGradientLight = listOf(Color(0xFF923FB8), Color(0xFFC06A54))
 
 // HyperCeiler app_version_text_color (#99ffffff dark, #99000000 light)
 private val VersionTextDark = Color(0x99FFFFFF)
@@ -128,6 +148,12 @@ private data class LicenseEntry(
     val license: String,
     val url: String,
     val compileOnly: Boolean = false,
+)
+
+private data class InfoField(
+    val labelRes: Int,
+    val value: String,
+    val primary: Boolean = false,
 )
 
 private val ThirdPartyLicenses = listOf(
@@ -164,9 +190,102 @@ private val ThirdPartyLicenses = listOf(
     ),
 )
 
-private fun openUrl(url: String, context: android.content.Context) {
+private fun openUrl(url: String, context: Context) {
     try {
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+    } catch (_: Exception) {
+    }
+}
+
+private fun systemProperty(key: String): String? {
+    try {
+        val cls = Class.forName("android.os.SystemProperties")
+        val get = cls.getMethod("get", String::class.java)
+        val value = get.invoke(null, key) as? String
+        if (!value.isNullOrBlank()) return value
+    } catch (_: Throwable) {
+    }
+    return try {
+        val process = Runtime.getRuntime().exec(arrayOf("getprop", key))
+        val output = process.inputStream.bufferedReader().use { it.readText() }.trim()
+        process.waitFor()
+        output.ifBlank { null }
+    } catch (_: Throwable) {
+        null
+    }
+}
+
+private fun formatStorage(): String? {
+    return try {
+        val stat = StatFs(Environment.getDataDirectory().path)
+        val free = stat.availableBytes
+        val total = stat.totalBytes
+        if (total <= 0L) return null
+        String.format(Locale.getDefault(), "%.1fGB/%.0fGB", free / 1e9, total / 1e9)
+    } catch (_: Exception) {
+        null
+    }
+}
+
+private fun osVersion(): String? {
+    val incremental = systemProperty("ro.mi.os.version.incremental")
+        ?: systemProperty("ro.build.version.incremental")
+        ?: Build.DISPLAY
+    if (incremental.isBlank()) return null
+    return if (incremental.startsWith("OS") && incremental.length > 2) {
+        incremental.substring(2)
+    } else {
+        incremental
+    }
+}
+
+private fun collectDeviceInfo(context: Context): List<InfoField> {
+    val fields = mutableListOf<InfoField>()
+
+    val deviceName = systemProperty("persist.private.device_name")
+        ?: systemProperty("persist.sys.device_name")
+        ?: try {
+            Settings.Global.getString(context.contentResolver, Settings.Global.DEVICE_NAME)
+        } catch (_: Exception) {
+            null
+        }
+        ?: Build.MODEL
+    if (deviceName.isNotBlank()) {
+        fields += InfoField(R.string.about_device_name, deviceName, primary = true)
+    }
+
+    val model = systemProperty("ro.product.marketname")
+        ?.takeIf { it.isNotBlank() }
+        ?: Build.MODEL
+    if (model.isNotBlank() && model != deviceName) {
+        fields += InfoField(R.string.about_device_model, model, primary = true)
+    }
+
+    formatStorage()?.let { fields += InfoField(R.string.about_storage, it, primary = true) }
+
+    osVersion()?.let { fields += InfoField(R.string.about_os_version, it) }
+
+    val androidVersion = listOfNotNull(
+        Build.VERSION.RELEASE,
+        Build.ID.takeIf { it.isNotBlank() },
+    ).joinToString(" ").trim()
+    if (androidVersion.isNotBlank()) {
+        fields += InfoField(R.string.about_android_version, androidVersion)
+    }
+
+    val securityPatch = Build.VERSION.SECURITY_PATCH
+    if (!securityPatch.isNullOrBlank()) {
+        fields += InfoField(R.string.about_security_patch, securityPatch)
+    }
+
+    return fields
+}
+
+private fun copyToClipboard(context: Context, label: String, value: String) {
+    try {
+        val clipboard = context.getSystemService(ClipboardManager::class.java)
+        clipboard?.setPrimaryClip(ClipData.newPlainText(label, value))
+        Toast.makeText(context, context.getString(R.string.about_copied), Toast.LENGTH_SHORT).show()
     } catch (_: Exception) {
     }
 }
@@ -201,6 +320,10 @@ fun AboutScreen(versionText: String, dark: Boolean, onBack: () -> Unit) {
         LightPaletteA.indices.map { i -> lerp(LightPaletteA[i], LightPaletteB[i], blend) }
     }
 
+    val deviceInfo by produceState(initialValue = emptyList(), context) {
+        value = withContext(Dispatchers.IO) { collectDeviceInfo(context) }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -217,14 +340,56 @@ fun AboutScreen(versionText: String, dark: Boolean, onBack: () -> Unit) {
                 versionText = versionText,
                 dark = dark,
                 fraction = fraction,
-                secondary = secondary,
             )
 
+            val primaryInfo = deviceInfo.filter { it.primary }
+            val secondaryInfo = deviceInfo.filterNot { it.primary }
+
+            if (primaryInfo.isNotEmpty()) {
+                Card(
+                    modifier = Modifier
+                        .padding(horizontal = CardMargin)
+                        .fillMaxWidth(),
+                    cornerRadius = 16.dp,
+                    insideMargin = PaddingValues(0.dp),
+                    colors = CardDefaults.defaultColors(
+                        color = if (dark) Color.White.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.62f),
+                    ),
+                ) {
+                    primaryInfo.forEachIndexed { index, field ->
+                        InfoRow(field = field, secondary = secondary)
+                        if (index != primaryInfo.lastIndex) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(start = 16.dp),
+                                thickness = 0.75.dp,
+                                color = MiuixTheme.colorScheme.dividerLine,
+                            )
+                        }
+                    }
+                }
+            }
+
+            secondaryInfo.forEach { field ->
+                Spacer(modifier = Modifier.height(CardMargin))
+                Card(
+                    modifier = Modifier
+                        .padding(horizontal = CardMargin)
+                        .fillMaxWidth(),
+                    cornerRadius = 16.dp,
+                    insideMargin = PaddingValues(0.dp),
+                    colors = CardDefaults.defaultColors(),
+                ) {
+                    InfoRow(field = field, secondary = secondary)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
             Card(
                 modifier = Modifier
-                    .padding(horizontal = 20.dp)
+                    .padding(horizontal = CardMargin)
                     .fillMaxWidth(),
-                insideMargin = PaddingValues(16.dp, 6.dp),
+                cornerRadius = 16.dp,
+                insideMargin = PaddingValues(0.dp),
             ) {
                 ArrowPreference(
                     title = stringResource(R.string.about_view_source),
@@ -232,6 +397,11 @@ fun AboutScreen(versionText: String, dark: Boolean, onBack: () -> Unit) {
                     endActions = {
                         Text(text = "GitHub", fontSize = 15.sp)
                     },
+                )
+                HorizontalDivider(
+                    modifier = Modifier.padding(start = 16.dp),
+                    thickness = 0.75.dp,
+                    color = MiuixTheme.colorScheme.dividerLine,
                 )
                 ArrowPreference(
                     title = stringResource(R.string.about_license),
@@ -254,8 +424,9 @@ fun AboutScreen(versionText: String, dark: Boolean, onBack: () -> Unit) {
 
             Card(
                 modifier = Modifier
-                    .padding(horizontal = 20.dp)
+                    .padding(horizontal = CardMargin)
                     .fillMaxWidth(),
+                cornerRadius = 16.dp,
                 insideMargin = PaddingValues(0.dp),
             ) {
                 ThirdPartyLicenses.forEachIndexed { index, entry ->
@@ -272,7 +443,7 @@ fun AboutScreen(versionText: String, dark: Boolean, onBack: () -> Unit) {
 
             Text(
                 text = stringResource(R.string.about_licenses_note),
-                modifier = Modifier.padding(start = 36.dp, end = 36.dp, top = 12.dp),
+                modifier = Modifier.padding(start = 28.dp, end = 28.dp, top = 12.dp),
                 fontSize = 12.sp,
                 color = secondary,
             )
@@ -284,9 +455,14 @@ fun AboutScreen(versionText: String, dark: Boolean, onBack: () -> Unit) {
             )
             Text(
                 text = stringResource(R.string.about_ui_credit),
-                modifier = Modifier.padding(top = 6.dp, bottom = 32.dp),
+                modifier = Modifier.padding(top = 6.dp),
                 fontSize = 12.sp,
                 color = secondary.copy(alpha = 0.75f),
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(
+                modifier = Modifier
+                    .windowInsetsBottomHeight(WindowInsets.navigationBars),
             )
         }
 
@@ -324,11 +500,49 @@ fun AboutScreen(versionText: String, dark: Boolean, onBack: () -> Unit) {
 }
 
 @Composable
+private fun InfoRow(field: InfoField, secondary: Color) {
+    val context = LocalContext.current
+    val label = stringResource(field.labelRes)
+    val copyLabel = stringResource(R.string.about_copy_value)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .clickable { copyToClipboard(context, label, field.value) }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.weight(1f),
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = field.value,
+            modifier = Modifier.widthIn(max = 200.dp),
+            fontSize = 14.sp,
+            color = secondary,
+            textAlign = TextAlign.End,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Icon(
+            imageVector = MiuixIcons.Copy,
+            contentDescription = copyLabel,
+            modifier = Modifier.size(16.dp),
+            tint = secondary,
+        )
+    }
+}
+
+@Composable
 private fun AboutHero(
     versionText: String,
     dark: Boolean,
     fraction: Float,
-    secondary: Color,
 ) {
     val density = LocalDensity.current
     val alpha = remember { Animatable(0f) }
@@ -359,7 +573,7 @@ private fun AboutHero(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = HeroHeight)
+            .height(HeroHeight)
             .windowInsetsPadding(WindowInsets.statusBars)
             .graphicsLayer {
                 val scrollAlpha = 1f - fraction
@@ -368,36 +582,18 @@ private fun AboutHero(
                 scaleX = scale
                 scaleY = scale
                 translationY = with(density) { 30.dp.toPx() } * (1f - rise.value)
-            }
-            .padding(top = 64.dp, bottom = 24.dp),
+            },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            Box(
-                modifier = Modifier
-                    .size(150.dp)
-                    .background(
-                        Brush.radialGradient(
-                            listOf(
-                                Color(0xFF5E82F5).copy(alpha = if (dark) 0.30f else 0.20f),
-                                Color(0xFF8C78EB).copy(alpha = if (dark) 0.10f else 0.08f),
-                                Color.Transparent,
-                            ),
-                        ),
-                        CircleShape,
-                    ),
-            )
-            AppLogo()
-        }
         GradientAppName(
-            modifier = Modifier.padding(top = 16.dp),
             gradient = if (dark) NameGradientDark else NameGradientLight,
         )
         Text(
             text = versionText,
-            modifier = Modifier.padding(top = 8.dp),
-            fontSize = 14.sp,
+            modifier = Modifier.padding(top = 10.dp),
+            fontSize = 13.sp,
+            letterSpacing = 0.4.sp,
             color = if (dark) VersionTextDark else VersionTextLight,
         )
     }
@@ -444,66 +640,20 @@ private fun LicenseRow(entry: LicenseEntry, secondary: Color) {
 }
 
 @Composable
-private fun AppLogo() {
-    Box(
-        modifier = Modifier
-            .size(104.dp)
-            .background(Color.White, RoundedCornerShape(26.dp)),
-        contentAlignment = Alignment.Center,
-    ) {
-        Canvas(modifier = Modifier.size(56.dp)) {
-            val w = size.width
-            val cx = w / 2f
-            val cy = w / 2f
-            val rOuter = w * 0.48f
-            val rInner = w * 0.30f
-            fun hexPoints(radius: Float): List<Offset> {
-                val pts = mutableListOf<Offset>()
-                for (i in 0 until 6) {
-                    val angle = Math.toRadians(i * 60.0)
-                    pts.add(
-                        Offset(
-                            (cx + radius * kotlin.math.cos(angle)).toFloat(),
-                            (cy + radius * kotlin.math.sin(angle)).toFloat(),
-                        ),
-                    )
-                }
-                return pts
-            }
-
-            fun hexPath(points: List<Offset>): Path {
-                val p = Path()
-                p.moveTo(points[0].x, points[0].y)
-                for (i in 1 until points.size) p.lineTo(points[i].x, points[i].y)
-                p.close()
-                return p
-            }
-
-            drawPath(
-                path = hexPath(hexPoints(rOuter)),
-                brush = Brush.verticalGradient(listOf(Color(0xFF5E8BF0), Color(0xFF7E6BE8))),
-            )
-            drawPath(path = hexPath(hexPoints(rInner)), color = Color.White)
-            drawPath(
-                path = hexPath(hexPoints(rInner * 0.62f)),
-                brush = Brush.verticalGradient(listOf(Color(0xFF93BAEC), Color(0xFF7C9FE0))),
-            )
-        }
-    }
-}
-
-@Composable
-private fun GradientAppName(modifier: Modifier = Modifier, gradient: List<Color>) {
+private fun GradientAppName(gradient: List<Color>) {
     androidx.compose.foundation.text.BasicText(
-        text = "WiFi Title Rename",
-        modifier = modifier,
+        text = stringResource(R.string.app_name),
+        modifier = Modifier
+            .padding(horizontal = 24.dp),
         style = TextStyle(
-            fontSize = 30.sp,
-            fontWeight = FontWeight.Bold,
+            fontSize = 34.sp,
+            fontFamily = FontFamily.Default,
+            fontWeight = FontWeight.Light,
+            letterSpacing = (-0.5).sp,
             brush = Brush.horizontalGradient(gradient),
             textAlign = TextAlign.Center,
         ),
-        maxLines = 2,
-        overflow = TextOverflow.Clip,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
     )
 }

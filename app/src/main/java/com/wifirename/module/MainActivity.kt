@@ -125,9 +125,9 @@ class MainActivity : ComponentActivity() {
     private fun versionText(): String {
         return try {
             val pi = packageManager.getPackageInfo(packageName, 0)
-            "v${pi.versionName ?: "1.4.0"} (${pi.longVersionCode and 0x7FFFFFFF})"
+            "v${pi.versionName ?: "1.5.0"} (${pi.longVersionCode and 0x7FFFFFFF})"
         } catch (_: Exception) {
-            "v1.4.0 (7)"
+            "v1.5.0 (8)"
         }
     }
 
