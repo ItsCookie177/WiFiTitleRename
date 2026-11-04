@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- DayNight so window/system-bar defaults follow the system mode; the Compose
+    <!-- DayNight split so window defaults follow the system mode; the Compose
          MiuixTheme applies the user-selected mode on top of it. -->
-    <style name="AppTheme" parent="@android:style/Theme.DeviceDefault.DayNight.NoActionBar" />
+    <style name="AppTheme" parent="@android:style/Theme.DeviceDefault.Light.NoActionBar" />
 </resources>
