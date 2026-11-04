@@ -25,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -94,7 +95,7 @@ fun AppRoot(
 
     var selecting by rememberSaveable { mutableStateOf(false) }
     var selectedSsids by rememberSaveable(
-        saver = listSaver(
+        saver = listSaver<SnapshotStateList<String>, String>(
             save = { it.toList() },
             restore = { it.toMutableStateList() },
         ),
