@@ -41,6 +41,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,7 +55,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -77,7 +77,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -95,9 +97,9 @@ import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
-import top.yukonga.miuix.kmp.icon.extended.Copy
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.utils.MiuixIndication
 import java.util.Locale
 
 private const val RepositoryUrl = "https://github.com/ItsCookie177/WiFiTitleRename"
@@ -143,8 +145,20 @@ private val NameGradientLight = listOf(Color(0xFF923FB8), Color(0xFFC06A54))
 private val VersionTextDark = Color(0x99FFFFFF)
 private val VersionTextLight = Color(0x99000000)
 
+// Bundled static Light face. HyperOS may point the whole "sans-serif" family at a single
+// static theme font (no fvar table), so FontWeight alone cannot produce a thin weight there,
+// and Compose 1.12 removed TextStyle.fontVariationSettings. Roboto Light is Apache-2.0.
+private val TitleFontFamily = FontFamily(
+    Font(
+        R.font.roboto_light,
+        weight = FontWeight.Light,
+        variationSettings = FontVariation.Settings(FontVariation.weight(300)),
+    ),
+)
+
 private data class LicenseEntry(
-    val name: String,
+    val name: String = "",
+    val nameRes: Int = 0,
     val license: String,
     val url: String,
     val compileOnly: Boolean = false,
@@ -184,7 +198,12 @@ private val ThirdPartyLicenses = listOf(
         compileOnly = true,
     ),
     LicenseEntry(
-        name = "HyperCeiler (About page adapted)",
+        name = "Roboto Light",
+        license = "Apache-2.0",
+        url = "https://github.com/googlefonts/roboto-2",
+    ),
+    LicenseEntry(
+        nameRes = R.string.license_hyperceiler_name,
         license = "AGPL-3.0",
         url = "https://github.com/ReChronoRain/HyperCeiler",
     ),
@@ -215,13 +234,28 @@ private fun systemProperty(key: String): String? {
     }
 }
 
+private val MarketCapacitiesGb = longArrayOf(8, 16, 32, 64, 128, 256, 512, 1024)
+
+private fun marketCapacityGb(totalBytes: Long): Long {
+    val totalGb = totalBytes / 1_000_000_000.0
+    return MarketCapacitiesGb.firstOrNull { it.toDouble() >= totalGb } ?: MarketCapacitiesGb.last()
+}
+
 private fun formatStorage(): String? {
     return try {
         val stat = StatFs(Environment.getDataDirectory().path)
-        val free = stat.availableBytes
         val total = stat.totalBytes
+        val free = stat.availableBytes
         if (total <= 0L) return null
-        String.format(Locale.getDefault(), "%.1fGB/%.0fGB", free / 1e9, total / 1e9)
+        val market = marketCapacityGb(total)
+        // HyperOS reports usage against the rounded market capacity, e.g. 128 - 18.2 = 109.8.
+        val used = (market * 1_000_000_000L - free).coerceAtLeast(0L)
+        String.format(
+            Locale.getDefault(),
+            "%.1fGB/%dGB",
+            used / 1e9,
+            market,
+        )
     } catch (_: Exception) {
         null
     }
@@ -324,11 +358,25 @@ fun AboutScreen(versionText: String, dark: Boolean, onBack: () -> Unit) {
         value = withContext(Dispatchers.IO) { collectDeviceInfo(context) }
     }
 
+    // The effect stays pinned to the viewport while content scrolls over it, so it always
+    // covers the whole page. The last stop blends into the base color to avoid a hard seam
+    // against the navigation-bar area.
+    val baseColor = if (dark) Color.Black else Color.White
+    val backgroundBrush = Brush.verticalGradient(
+        colorStops = arrayOf(
+            0f to gradient[0],
+            0.30f to gradient[1],
+            0.58f to gradient[2],
+            0.82f to gradient[3],
+            1f to baseColor,
+        ),
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (dark) Color.Black else Color.White)
-            .background(Brush.verticalGradient(gradient)),
+            .background(baseColor)
+            .background(backgroundBrush),
     ) {
         Column(
             modifier = Modifier
@@ -503,12 +551,15 @@ fun AboutScreen(versionText: String, dark: Boolean, onBack: () -> Unit) {
 private fun InfoRow(field: InfoField, secondary: Color) {
     val context = LocalContext.current
     val label = stringResource(field.labelRes)
-    val copyLabel = stringResource(R.string.about_copy_value)
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 56.dp)
-            .clickable { copyToClipboard(context, label, field.value) }
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = MiuixIndication(MiuixTheme.colorScheme.onSurface),
+                onClickLabel = stringResource(R.string.about_copy_value),
+            ) { copyToClipboard(context, label, field.value) }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -521,19 +572,12 @@ private fun InfoRow(field: InfoField, secondary: Color) {
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = field.value,
-            modifier = Modifier.widthIn(max = 200.dp),
+            modifier = Modifier.widthIn(max = 210.dp),
             fontSize = 14.sp,
             color = secondary,
             textAlign = TextAlign.End,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-        )
-        Spacer(modifier = Modifier.width(6.dp))
-        Icon(
-            imageVector = MiuixIcons.Copy,
-            contentDescription = copyLabel,
-            modifier = Modifier.size(16.dp),
-            tint = secondary,
         )
     }
 }
@@ -607,7 +651,7 @@ private fun LicenseRow(entry: LicenseEntry, secondary: Color) {
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Text(
-            text = entry.name,
+            text = if (entry.nameRes != 0) stringResource(entry.nameRes) else entry.name,
             fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold,
         )
@@ -647,7 +691,7 @@ private fun GradientAppName(gradient: List<Color>) {
             .padding(horizontal = 24.dp),
         style = TextStyle(
             fontSize = 34.sp,
-            fontFamily = FontFamily.Default,
+            fontFamily = TitleFontFamily,
             fontWeight = FontWeight.Light,
             letterSpacing = (-0.5).sp,
             brush = Brush.horizontalGradient(gradient),

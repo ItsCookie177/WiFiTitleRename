@@ -78,7 +78,7 @@
     <string name="about_view_source">View Source</string>
     <string name="about_license">License</string>
     <string name="about_third_party_heading">Third Party Licenses</string>
-    <string name="about_source_notice">Source must remain public · AGPL-3.0</string>
+    <string name="about_source_notice">Licensed under AGPL-3.0</string>
     <string name="about_ui_credit">UI by Miuix</string>
     <string name="about_licenses_note">Each library is licensed by its respective owner.</string>
     <string name="about_compile_only">Compile-time API, not bundled</string>
@@ -90,5 +90,6 @@
     <string name="about_security_patch">Android security update</string>
     <string name="about_copied">Copied</string>
     <string name="about_copy_value">Copy value</string>
+    <string name="license_hyperceiler_name">HyperCeiler (About page adapted)</string>
     <string name="back">Back</string>
 </resources>
