@@ -35,6 +35,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import kotlin.math.floor
+import kotlin.math.roundToInt
 
 private const val PingPongSeconds = 120f
 private const val TargetFrameSeconds = 1f / 30f
@@ -215,12 +216,12 @@ private fun ShaderBackground(
     val activePaint = paint
 
     modifier
-        .graphicsLayer { this.alpha = alpha }
         .drawBehind {
             if (size.width <= 0f || size.height <= 0f) return@drawBehind
             val current = time.floatValue
             val colors = interpolatedColors(data, current)
             val heightFraction = (logoAreaPx / size.height).coerceIn(0.35f, 0.75f)
+            activePaint.alpha = (alpha * 255f).roundToInt().coerceIn(0, 255)
             activeShader.setFloatUniform("uResolution", size.width, size.height)
             activeShader.setFloatUniform("uBound", 0f, 1f - heightFraction, 1f, heightFraction)
             activeShader.setFloatUniform("uAnimTime", current)
