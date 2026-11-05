@@ -15,6 +15,7 @@ import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable
@@ -23,17 +24,22 @@ fun SettingsContent(
     themeMode: String,
     scrollBehavior: ScrollBehavior,
     paddingValues: PaddingValues,
-    onThemeClick: () -> Unit,
+    onThemeChanged: (String) -> Unit,
     onExport: () -> Unit,
     onImport: () -> Unit,
     onClearAll: () -> Unit,
     onShowGuide: () -> Unit,
     onOpenAbout: () -> Unit,
 ) {
-    val themeLabel = when (themeMode) {
-        AppSettings.THEME_LIGHT -> stringResource(R.string.theme_light)
-        AppSettings.THEME_DARK -> stringResource(R.string.theme_dark)
-        else -> stringResource(R.string.theme_system)
+    val themeOptions = listOf(
+        stringResource(R.string.theme_system),
+        stringResource(R.string.theme_light),
+        stringResource(R.string.theme_dark),
+    )
+    val themeIndex = when (themeMode) {
+        AppSettings.THEME_LIGHT -> 1
+        AppSettings.THEME_DARK -> 2
+        else -> 0
     }
 
     LazyColumn(
@@ -53,10 +59,19 @@ fun SettingsContent(
         }
         item(key = "g1-card") {
             Card(insideMargin = PaddingValues(16.dp, 6.dp)) {
-                ArrowPreference(
+                OverlayDropdownPreference(
                     title = stringResource(R.string.setting_theme),
-                    summary = themeLabel,
-                    onClick = onThemeClick,
+                    items = themeOptions,
+                    selectedIndex = themeIndex,
+                    onSelectedIndexChange = { index ->
+                        onThemeChanged(
+                            when (index) {
+                                1 -> AppSettings.THEME_LIGHT
+                                2 -> AppSettings.THEME_DARK
+                                else -> AppSettings.THEME_SYSTEM
+                            },
+                        )
+                    },
                 )
             }
         }

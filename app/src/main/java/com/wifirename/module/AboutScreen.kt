@@ -23,6 +23,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -93,6 +94,7 @@ import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixIndication
+import java.io.File
 import java.util.Locale
 
 private const val RepositoryUrl = "https://github.com/ItsCookie177/WiFiTitleRename"
@@ -110,16 +112,35 @@ private val NameGradientLight = listOf(Color(0xFF923FB8), Color(0xFFC06A54))
 private val VersionTextDark = Color(0x99FFFFFF)
 private val VersionTextLight = Color(0x99000000)
 
-// Bundled static Light face. HyperOS may point the whole "sans-serif" family at a single
-// static theme font (no fvar table), so FontWeight alone cannot produce a thin weight there,
-// and Compose 1.12 removed TextStyle.fontVariationSettings. Roboto Light is Apache-2.0.
-private val TitleFontFamily = FontFamily(
-    Font(
-        R.font.roboto_light,
-        weight = FontWeight.Light,
-        variationSettings = FontVariation.Settings(FontVariation.weight(300)),
-    ),
-)
+// HyperCeiler's About header is a wordmark ImageView, not a TextView, so it has no text style
+// for the app name. Keep the Miuix "title1" size (32sp) used by the previous implementation and
+// use the weight HyperCeiler assigns to display text, "sans-serif-medium"
+// (miuix_font_style_misans_medium_font_family). HyperOS maps every weight of that alias to the
+// static MiSansVF_Overlay.ttf (no fvar table), so FontWeight alone cannot make it heavier there.
+// Load the real MiSans variable font from the system with an explicit wght=500 variation when
+// available; otherwise fall back to bundled Roboto Medium (Apache-2.0), a static face that
+// Compose renders reliably everywhere.
+private val SystemTitleFontFamily: FontFamily? by lazy {
+    runCatching {
+        val file = listOf(
+            "/system/fonts/MiSansLatinVF.ttf",
+            "/system/fonts/MiSansVF.ttf",
+        ).map(::File).firstOrNull { it.isFile } ?: return@runCatching null
+        val typeface = Typeface.Builder(file)
+            .setFontVariationSettings("'wght' 500")
+            .build()
+        FontFamily(typeface)
+    }.getOrNull()
+}
+
+private val TitleFontFamily: FontFamily =
+    SystemTitleFontFamily ?: FontFamily(
+        Font(
+            R.font.roboto_medium,
+            weight = FontWeight.Medium,
+            variationSettings = FontVariation.Settings(FontVariation.weight(500)),
+        ),
+    )
 
 private data class LicenseEntry(
     val name: String = "",
@@ -163,7 +184,7 @@ private val ThirdPartyLicenses = listOf(
         compileOnly = true,
     ),
     LicenseEntry(
-        name = "Roboto Light",
+        name = "Roboto",
         license = "Apache-2.0",
         url = "https://github.com/googlefonts/roboto-2",
     ),
@@ -628,16 +649,21 @@ private fun LicenseRow(entry: LicenseEntry, secondary: Color) {
 
 @Composable
 private fun GradientAppName(gradient: List<Color>) {
+    val base = MiuixTheme.textStyles.title1
+    // The header is a wordmark, so keep its visual size stable when the system font scale is
+    // raised; otherwise a 32sp single-line title clips on narrow screens at 1.3x-2x.
+    val fontScale = LocalDensity.current.fontScale
+    val titleSize = if (fontScale > 1.05f) (base.fontSize.value / fontScale).sp else base.fontSize
     androidx.compose.foundation.text.BasicText(
         text = stringResource(R.string.app_name),
         modifier = Modifier
             .padding(horizontal = 24.dp),
         style = TextStyle(
             brush = Brush.horizontalGradient(gradient),
-            fontSize = MiuixTheme.textStyles.title1.fontSize,
+            fontSize = titleSize,
             fontFamily = TitleFontFamily,
-            fontWeight = FontWeight.Normal,
-            letterSpacing = (-0.5).sp,
+            fontWeight = FontWeight.Medium,
+            letterSpacing = base.letterSpacing,
             textAlign = TextAlign.Center,
         ),
         maxLines = 1,

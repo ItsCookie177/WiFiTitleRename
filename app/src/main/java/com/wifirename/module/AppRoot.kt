@@ -108,7 +108,6 @@ fun AppRoot(
     var showImportAsk by rememberSaveable { mutableStateOf(false) }
     var pendingReplace by rememberSaveable { mutableStateOf(false) }
     var showClearAllAsk by rememberSaveable { mutableStateOf(false) }
-    var showThemeAsk by rememberSaveable { mutableStateOf(false) }
 
     fun exitSelection() {
         selecting = false
@@ -329,10 +328,7 @@ fun AppRoot(
                             themeMode = themeMode,
                             scrollBehavior = settingsScrollBehavior,
                             paddingValues = paddingValues,
-                            onThemeClick = {
-                                Log.d(LOG_TAG, "theme dialog open")
-                                showThemeAsk = true
-                            },
+                            onThemeChanged = onThemeChanged,
                             onExport = {
                                 Log.d(LOG_TAG, "export mapping")
                                 exportPicker.launch("wifirename-mappings.json")
@@ -536,43 +532,6 @@ fun AppRoot(
                     }
                 }
 
-                if (showThemeAsk) {
-                    OverlayDialog(
-                        show = showThemeAsk,
-                        title = stringResource(R.string.setting_theme),
-                        onDismissRequest = { showThemeAsk = false },
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            ThemeOption(
-                                text = stringResource(R.string.theme_system),
-                                selected = themeMode == AppSettings.THEME_SYSTEM,
-                                onClick = {
-                                    Log.d(LOG_TAG, "theme -> system")
-                                    onThemeChanged(AppSettings.THEME_SYSTEM)
-                                    showThemeAsk = false
-                                },
-                            )
-                            ThemeOption(
-                                text = stringResource(R.string.theme_light),
-                                selected = themeMode == AppSettings.THEME_LIGHT,
-                                onClick = {
-                                    Log.d(LOG_TAG, "theme -> light")
-                                    onThemeChanged(AppSettings.THEME_LIGHT)
-                                    showThemeAsk = false
-                                },
-                            )
-                            ThemeOption(
-                                text = stringResource(R.string.theme_dark),
-                                selected = themeMode == AppSettings.THEME_DARK,
-                                onClick = {
-                                    Log.d(LOG_TAG, "theme -> dark")
-                                    onThemeChanged(AppSettings.THEME_DARK)
-                                    showThemeAsk = false
-                                },
-                            )
-                        }
-                    }
-                }
             }
         }
     }

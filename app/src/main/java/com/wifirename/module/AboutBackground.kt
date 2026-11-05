@@ -32,8 +32,6 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.dp
 import kotlin.math.floor
 import kotlin.math.roundToInt
 
@@ -165,10 +163,10 @@ private fun ShaderBackground(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val density = LocalDensity.current
     val data = if (dark) PhoneDarkData else PhoneLightData
-    // HyperCeiler: uBound = {0, 1 - h, 1, h} with h = (actionBar + app_logo_area_height) / height.
-    val logoAreaPx = with(density) { (389.dp + 56.dp).toPx() }
+    // HyperCeiler limits uBound to the action bar + app_logo_area_height region. We use the
+    // full viewport so the animated gradient sits behind every About card, not only the first
+    // one; the scroll-driven fade still hands the page over to the solid base color.
     val shader = remember(context, dark) {
         runCatching {
             RuntimeShader(loadShaderSource(context)).also { applyStaticUniforms(it, data) }
@@ -220,10 +218,9 @@ private fun ShaderBackground(
             if (size.width <= 0f || size.height <= 0f) return@drawBehind
             val current = time.floatValue
             val colors = interpolatedColors(data, current)
-            val heightFraction = (logoAreaPx / size.height).coerceIn(0.35f, 0.75f)
             activePaint.alpha = (alpha * 255f).roundToInt().coerceIn(0, 255)
             activeShader.setFloatUniform("uResolution", size.width, size.height)
-            activeShader.setFloatUniform("uBound", 0f, 1f - heightFraction, 1f, heightFraction)
+            activeShader.setFloatUniform("uBound", 0f, 0f, 1f, 1f)
             activeShader.setFloatUniform("uAnimTime", current)
             activeShader.setFloatUniform("uColors", colors)
             drawIntoCanvas { canvas ->
