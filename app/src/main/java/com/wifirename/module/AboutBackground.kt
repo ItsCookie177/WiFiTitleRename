@@ -211,6 +211,8 @@ private fun ShaderBackground(
         GradientFallback(dark = dark, alpha = alpha, modifier = modifier)
         return
     }
+    val activeShader = shader
+    val activePaint = paint
 
     modifier
         .graphicsLayer { this.alpha = alpha }
@@ -219,12 +221,12 @@ private fun ShaderBackground(
             val current = time.floatValue
             val colors = interpolatedColors(data, current)
             val heightFraction = (logoAreaPx / size.height).coerceIn(0.35f, 0.75f)
-            shader.setFloatUniform("uResolution", size.width, size.height)
-            shader.setFloatUniform("uBound", 0f, 1f - heightFraction, 1f, heightFraction)
-            shader.setFloatUniform("uAnimTime", current)
-            shader.setFloatUniform("uColors", colors)
+            activeShader.setFloatUniform("uResolution", size.width, size.height)
+            activeShader.setFloatUniform("uBound", 0f, 1f - heightFraction, 1f, heightFraction)
+            activeShader.setFloatUniform("uAnimTime", current)
+            activeShader.setFloatUniform("uColors", colors)
             drawIntoCanvas { canvas ->
-                canvas.nativeCanvas.drawRect(0f, 0f, size.width, size.height, paint)
+                canvas.nativeCanvas.drawRect(0f, 0f, size.width, size.height, activePaint)
             }
         }
         .let { Box(Modifier.fillMaxSize().then(it)) }
