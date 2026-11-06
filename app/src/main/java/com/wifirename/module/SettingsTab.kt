@@ -3,6 +3,7 @@ package com.wifirename.module
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -11,6 +12,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.basic.BasicComponentDefaults
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
@@ -25,6 +27,7 @@ fun SettingsContent(
     scrollBehavior: ScrollBehavior,
     paddingValues: PaddingValues,
     onThemeChanged: (String) -> Unit,
+    onOpenIcons: () -> Unit,
     onExport: () -> Unit,
     onImport: () -> Unit,
     onClearAll: () -> Unit,
@@ -72,6 +75,16 @@ fun SettingsContent(
                             },
                         )
                     },
+                )
+                HorizontalDivider(
+                    modifier = Modifier.padding(start = 16.dp),
+                    thickness = 0.75.dp,
+                    color = MiuixTheme.colorScheme.dividerLine,
+                )
+                ArrowPreference(
+                    title = stringResource(R.string.settings_icons_colors),
+                    summary = stringResource(R.string.settings_icons_colors_summary),
+                    onClick = onOpenIcons,
                 )
             }
         }

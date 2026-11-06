@@ -1,0 +1,28 @@
+WiFi Title Rename
+Copyright (C) 2023-2026 ItsCookie177 and contributors
+
+The source code of this project is licensed under the GNU Affero General
+Public License v3.0 (AGPL-3.0). See LICENSE.
+
+EXCEPTION: THIRD-PARTY ICON IMAGES
+----------------------------------
+The following image assets and their derived WebP resources are NOT covered
+by the AGPL-3.0 license:
+
+  design/icons/icon1.jpg   -> app/src/main/res/drawable-nodpi/ic_extra_1.webp
+  design/icons/icon2.jpg   -> app/src/main/res/drawable-nodpi/ic_extra_2.webp
+  design/icons/icon3.jpg   -> app/src/main/res/drawable-nodpi/ic_extra_3.webp
+
+The respective copyright holders retain all rights to these images. They are
+included only as launcher-icon choices. Credit placeholders to be filled by
+the distributor:
+
+  <KREDIT_ICON_1>
+  <KREDIT_ICON_2>
+  <KREDIT_ICON_3>
+
+The original caret-wave-assets.zip is kept unmodified. The Simple "Caret Wave"
+assets were supplied with the project and are used verbatim.
+
+The Android launcher may cache or duplicate icons briefly after a component
+alias is enabled or disabled; this is a launcher behaviour, not a license term.

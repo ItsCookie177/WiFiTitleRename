@@ -145,7 +145,8 @@ private val TitleFontFamily: FontFamily =
 private data class LicenseEntry(
     val name: String = "",
     val nameRes: Int = 0,
-    val license: String,
+    val license: String = "",
+    val licenseRes: Int = 0,
     val url: String,
     val compileOnly: Boolean = false,
 )
@@ -192,6 +193,24 @@ private val ThirdPartyLicenses = listOf(
         nameRes = R.string.license_hyperceiler_name,
         license = "AGPL-3.0",
         url = "https://github.com/ReChronoRain/HyperCeiler",
+    ),
+)
+
+private val IconCredits = listOf(
+    LicenseEntry(
+        name = "<KREDIT_ICON_1>",
+        licenseRes = R.string.about_icon_credit_license,
+        url = "NOTICE",
+    ),
+    LicenseEntry(
+        name = "<KREDIT_ICON_2>",
+        licenseRes = R.string.about_icon_credit_license,
+        url = "NOTICE",
+    ),
+    LicenseEntry(
+        name = "<KREDIT_ICON_3>",
+        licenseRes = R.string.about_icon_credit_license,
+        url = "NOTICE",
     ),
 )
 
@@ -454,6 +473,43 @@ fun AboutScreen(versionText: String, dark: Boolean, onBack: () -> Unit) {
             }
 
             Text(
+                text = stringResource(R.string.about_icon_credit_heading),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 8.dp),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = secondary,
+            )
+
+            Card(
+                modifier = Modifier
+                    .padding(horizontal = CardMargin)
+                    .fillMaxWidth(),
+                cornerRadius = 16.dp,
+                insideMargin = PaddingValues(0.dp),
+                colors = cardColors,
+            ) {
+                IconCredits.forEachIndexed { index, entry ->
+                    LicenseRow(entry = entry, secondary = secondary)
+                    if (index != IconCredits.lastIndex) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(start = 16.dp),
+                            thickness = 0.75.dp,
+                            color = MiuixTheme.colorScheme.dividerLine,
+                        )
+                    }
+                }
+            }
+
+            Text(
+                text = stringResource(R.string.about_icon_credit_note),
+                modifier = Modifier.padding(start = 28.dp, end = 28.dp, top = 8.dp),
+                fontSize = 12.sp,
+                color = secondary,
+            )
+
+            Text(
                 text = stringResource(R.string.about_licenses_note),
                 modifier = Modifier.padding(start = 28.dp, end = 28.dp, top = 12.dp),
                 fontSize = 12.sp,
@@ -621,7 +677,11 @@ private fun LicenseRow(entry: LicenseEntry, secondary: Color) {
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = entry.license,
+                text = if (entry.licenseRes != 0) {
+                    stringResource(entry.licenseRes)
+                } else {
+                    entry.license
+                },
                 modifier = Modifier.padding(top = 2.dp),
                 fontSize = 12.sp,
                 color = secondary,

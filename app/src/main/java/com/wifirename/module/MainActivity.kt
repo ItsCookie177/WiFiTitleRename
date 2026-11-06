@@ -27,9 +27,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        IconSwitcher.reconcile(this)
         enableEdgeToEdge()
         setContent {
             var themeMode by remember { mutableStateOf(AppSettings.themeMode(this)) }
+            var iconId by remember { mutableStateOf(IconSettings.iconId(this)) }
             val systemDark = isSystemInDarkTheme()
             val dark = when (themeMode) {
                 AppSettings.THEME_LIGHT -> false
@@ -71,9 +73,21 @@ class MainActivity : ComponentActivity() {
                     versionText = versionText(),
                     themeMode = themeMode,
                     dark = dark,
+                    activeIconId = iconId,
                     onThemeChanged = { mode ->
                         themeMode = mode
                         AppSettings.setThemeMode(this, mode)
+                    },
+                    onIconSelected = { id ->
+                        if (IconSwitcher.select(this, id)) {
+                            iconId = id
+                        } else {
+                            Toast.makeText(
+                                this,
+                                getString(R.string.icon_apply_failed),
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        }
                     },
                     onSave = { original, ssid, label ->
                         AppSettings.saveMapping(this, original, ssid, label)
@@ -125,9 +139,9 @@ class MainActivity : ComponentActivity() {
     private fun versionText(): String {
         return try {
             val pi = packageManager.getPackageInfo(packageName, 0)
-            "v${pi.versionName ?: "1.6.1"} (${pi.longVersionCode and 0x7FFFFFFF})"
+            "v${pi.versionName ?: "1.7.0"} (${pi.longVersionCode and 0x7FFFFFFF})"
         } catch (_: Exception) {
-            "v1.6.1 (11)"
+            "v1.7.0 (12)"
         }
     }
 

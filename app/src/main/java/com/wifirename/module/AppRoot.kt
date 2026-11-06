@@ -56,7 +56,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 private const val LOG_TAG = "WifiRenameUI"
 
 enum class Tabs { MAPPING, SETTINGS }
-enum class RootPage { MAIN, ABOUT }
+enum class RootPage { MAIN, ABOUT, ICONS }
 
 data class Mapping(val ssid: String, val label: String)
 
@@ -74,7 +74,9 @@ fun AppRoot(
     versionText: String,
     themeMode: String,
     dark: Boolean,
+    activeIconId: String,
     onThemeChanged: (String) -> Unit,
+    onIconSelected: (String) -> Unit,
     onSave: (original: String?, ssid: String, label: String) -> Unit,
     onDelete: (String) -> Unit,
     onDeleteMany: (Collection<String>) -> Unit,
@@ -154,12 +156,21 @@ fun AppRoot(
     AnimatedContent(
         targetState = page,
         transitionSpec = {
-            if (targetState == RootPage.ABOUT) {
-                (slideInVertically(tween(250)) { it / 6 } + fadeIn(tween(250))) togetherWith
-                    (slideOutHorizontally(tween(250)) { -it / 8 } + fadeOut(tween(200)))
-            } else {
-                (slideInHorizontally(tween(250)) { -it / 8 } + fadeIn(tween(250))) togetherWith
-                    (slideOutHorizontally(tween(250)) { it / 6 } + fadeOut(tween(200)))
+            when (targetState) {
+                RootPage.ABOUT -> {
+                    (slideInVertically(tween(250)) { it / 6 } + fadeIn(tween(250))) togetherWith
+                        (slideOutHorizontally(tween(250)) { -it / 8 } + fadeOut(tween(200)))
+                }
+
+                RootPage.ICONS -> {
+                    (slideInHorizontally(tween(250)) { it / 5 } + fadeIn(tween(250))) togetherWith
+                        (slideOutHorizontally(tween(250)) { -it / 8 } + fadeOut(tween(200)))
+                }
+
+                else -> {
+                    (slideInHorizontally(tween(250)) { -it / 8 } + fadeIn(tween(250))) togetherWith
+                        (slideOutHorizontally(tween(250)) { it / 6 } + fadeOut(tween(200)))
+                }
             }
         },
         label = "root",
@@ -168,6 +179,12 @@ fun AppRoot(
             AboutScreen(
                 versionText = versionText,
                 dark = dark,
+                onBack = { page = RootPage.MAIN },
+            )
+        } else if (current == RootPage.ICONS) {
+            IconsColorsScreen(
+                activeIconId = activeIconId,
+                onIconSelected = onIconSelected,
                 onBack = { page = RootPage.MAIN },
             )
         } else {
@@ -329,6 +346,7 @@ fun AppRoot(
                             scrollBehavior = settingsScrollBehavior,
                             paddingValues = paddingValues,
                             onThemeChanged = onThemeChanged,
+                            onOpenIcons = { page = RootPage.ICONS },
                             onExport = {
                                 Log.d(LOG_TAG, "export mapping")
                                 exportPicker.launch("wifirename-mappings.json")
