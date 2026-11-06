@@ -399,6 +399,7 @@ fun CustomColorSheet(
                         }
                     },
                     modifier = Modifier.weight(1f),
+                    enabled = parseHexColor(hexInput) != null,
                     colors = ButtonDefaults.textButtonColorsPrimary(),
                 )
             }
