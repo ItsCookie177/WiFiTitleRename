@@ -21,35 +21,52 @@ object IconSwitcher {
 
     private const val CUSTOM_SHORTCUT_ID = "custom_icon"
 
-    fun reconcile(context: Context) {
-        select(context, IconSettings.iconId(context))
+    fun reconcile(context: Context, preferredId: String? = null) {
+        val id = preferredId
+            ?.takeIf { IconCatalog.isKnown(it) }
+            ?: IconSettings.iconId(context)
+        if (select(context, id)) {
+            disableOthers(context, id)
+        }
     }
 
+    /**
+     * Persists the choice and enables its alias. The caller must launch the
+     * new alias and let [reconcile] disable the old one; disabling the alias
+     * that hosts the current task would close the app before the preference
+     * is written on some launchers.
+     */
     fun select(context: Context, id: String): Boolean {
         if (!IconCatalog.isKnown(id)) return false
         return try {
-            val pm = context.packageManager
-            val selected = IconCatalog.component(context, id)
-            pm.setComponentEnabledSetting(
-                selected,
+            if (!IconSettings.setIconId(context, id)) return false
+            context.packageManager.setComponentEnabledSetting(
+                IconCatalog.component(context, id),
                 PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
                 PackageManager.DONT_KILL_APP,
             )
-            for (otherId in IconCatalog.allIds) {
-                if (otherId == id) continue
-                val other = IconCatalog.component(context, otherId)
-                if (isEffectivelyEnabled(pm, other, otherId == IconCatalog.defaultId)) {
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun disableOthers(context: Context, id: String) {
+        val pm = context.packageManager
+        for (otherId in IconCatalog.allIds) {
+            if (otherId == id) continue
+            val other = IconCatalog.component(context, otherId)
+            if (isEffectivelyEnabled(pm, other, otherId == IconCatalog.defaultId)) {
+                try {
                     pm.setComponentEnabledSetting(
                         other,
                         PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
                         PackageManager.DONT_KILL_APP,
                     )
+                } catch (_: Exception) {
+                    // A stale component should not block the selected icon.
                 }
             }
-            IconSettings.setIconId(context, id)
-            true
-        } catch (_: Exception) {
-            false
         }
     }
 

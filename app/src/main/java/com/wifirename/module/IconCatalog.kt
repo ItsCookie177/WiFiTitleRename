@@ -126,4 +126,7 @@ object IconCatalog {
             context.packageName,
             "${context.packageName}.${aliasSuffix(id)}",
         )
+
+    fun idForComponent(context: Context, target: ComponentName): String? =
+        allIds.firstOrNull { component(context, it) == target }
 }

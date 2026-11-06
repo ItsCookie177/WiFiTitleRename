@@ -74,6 +74,7 @@ fun AppRoot(
     versionText: String,
     themeMode: String,
     dark: Boolean,
+    startOnIcons: Boolean,
     activeIconId: String,
     onThemeChanged: (String) -> Unit,
     onIconSelected: (String) -> Unit,
@@ -85,7 +86,9 @@ fun AppRoot(
     onImportPick: (Uri?, Boolean) -> Unit,
 ) {
     var tab by rememberSaveable { mutableStateOf(Tabs.MAPPING) }
-    var page by rememberSaveable { mutableStateOf(RootPage.MAIN) }
+    var page by rememberSaveable {
+        mutableStateOf(if (startOnIcons) RootPage.ICONS else RootPage.MAIN)
+    }
 
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
     val mappingScrollBehavior = MiuixScrollBehavior()

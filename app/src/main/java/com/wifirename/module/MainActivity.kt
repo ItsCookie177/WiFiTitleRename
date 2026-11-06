@@ -1,5 +1,6 @@
 package com.wifirename.module
 
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
@@ -25,9 +26,13 @@ import java.io.OutputStreamWriter
 
 class MainActivity : ComponentActivity() {
 
+    companion object {
+        private const val EXTRA_OPEN_ICONS = "com.wifirename.module.extra.OPEN_ICONS"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        IconSwitcher.reconcile(this)
+        IconSwitcher.reconcile(this, IconCatalog.idForComponent(this, componentName))
         enableEdgeToEdge()
         setContent {
             var themeMode by remember { mutableStateOf(AppSettings.themeMode(this)) }
@@ -57,6 +62,7 @@ class MainActivity : ComponentActivity() {
                     isAppearanceLightNavigationBars = !dark
                 }
             }
+            val startOnIcons = intent.getBooleanExtra(EXTRA_OPEN_ICONS, false)
             MiuixTheme(controller = controller) {
                 val mappings = remember { mutableStateListOf<Mapping>() }
 
@@ -73,14 +79,37 @@ class MainActivity : ComponentActivity() {
                     versionText = versionText(),
                     themeMode = themeMode,
                     dark = dark,
+                    startOnIcons = startOnIcons,
                     activeIconId = iconId,
                     onThemeChanged = { mode ->
                         themeMode = mode
                         AppSettings.setThemeMode(this, mode)
                     },
                     onIconSelected = { id ->
-                        if (IconSwitcher.select(this, id)) {
+                        if (id == iconId) {
+                            IconSwitcher.select(this, id)
                             iconId = id
+                        } else if (IconSwitcher.select(this, id)) {
+                            try {
+                                startActivity(
+                                    Intent(Intent.ACTION_MAIN).apply {
+                                        component = IconCatalog.component(this@MainActivity, id)
+                                        addCategory(Intent.CATEGORY_LAUNCHER)
+                                        putExtra(EXTRA_OPEN_ICONS, true)
+                                        addFlags(
+                                            Intent.FLAG_ACTIVITY_NEW_TASK or
+                                                Intent.FLAG_ACTIVITY_CLEAR_TASK,
+                                        )
+                                    },
+                                )
+                            } catch (_: Exception) {
+                                Toast.makeText(
+                                    this,
+                                    getString(R.string.icon_apply_failed),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                                IconSwitcher.disableOthers(this, id)
+                            }
                         } else {
                             Toast.makeText(
                                 this,

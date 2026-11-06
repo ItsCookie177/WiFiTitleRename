@@ -27,9 +27,9 @@ object IconSettings {
         return if (IconCatalog.isKnown(saved)) saved else IconCatalog.defaultId
     }
 
-    fun setIconId(context: Context, id: String) {
-        if (!IconCatalog.isKnown(id)) return
-        prefs(context).edit().putString(KEY_ICON_ID, id).apply()
+    fun setIconId(context: Context, id: String): Boolean {
+        if (!IconCatalog.isKnown(id)) return false
+        return prefs(context).edit().putString(KEY_ICON_ID, id).commit()
     }
 
     fun customBgColor(context: Context): Color =
