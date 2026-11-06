@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">WiFi Title Rename</string>
-    <string name="xposed_description">Change displayed WiFi names (WifiEntry.getTitle) without altering the real SSID</string>
+    <string name="app_name">HyperMint</string>
+    <string name="xposed_description">HyperMint changes displayed WiFi names (WifiEntry.getTitle) without altering the real SSID</string>
 
     <string name="tab_mapping">Mappings</string>
     <string name="tab_settings">Settings</string>
@@ -136,7 +136,7 @@
     <string name="icon_color_shortcut_sent">Shortcut request sent. If it does not appear, allow &quot;Create shortcut&quot; in the launcher settings.</string>
     <string name="icon_color_shortcut_pinned">Custom shortcut pinned</string>
     <string name="icon_color_shortcut_help_title">Shortcut not available</string>
-    <string name="icon_color_shortcut_help_body">This launcher did not accept the shortcut request. Open the launcher settings, allow &quot;Create shortcut&quot; (or &quot;Add to home screen&quot;) for WiFi Title Rename, then try again. Template icons keep working without this permission.</string>
+    <string name="icon_color_shortcut_help_body">This launcher did not accept the shortcut request. Open the launcher settings, allow &quot;Create shortcut&quot; (or &quot;Add to home screen&quot;) for HyperMint, then try again. Template icons keep working without this permission.</string>
     <string name="icon_color_reset">Reset colors</string>
     <string name="icon_color_mode_grid">Grid</string>
     <string name="icon_color_mode_slider">Slider</string>
@@ -150,7 +150,7 @@
     <string name="icon_color_hue_value">%1$d°</string>
     <string name="icon_color_bg_opaque_note">Background is always fully opaque.</string>
     <string name="icon_custom_shortcut_label">WiFi custom</string>
-    <string name="icon_custom_shortcut_long">WiFi Title Rename (custom icon)</string>
+    <string name="icon_custom_shortcut_long">HyperMint (custom icon)</string>
     <string name="icon_apply_failed">Could not change the launcher icon</string>
     <string name="ok">OK</string>
     <string name="about_icon_credit_heading">Icon credits</string>

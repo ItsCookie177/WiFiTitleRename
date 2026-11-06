@@ -98,8 +98,8 @@ import top.yukonga.miuix.kmp.utils.MiuixIndication
 import java.io.File
 import java.util.Locale
 
-private const val RepositoryUrl = "https://github.com/ItsCookie177/WiFiTitleRename"
-private const val LicenseUrl = "https://github.com/ItsCookie177/WiFiTitleRename/blob/master/LICENSE"
+private const val RepositoryUrl = "https://github.com/ItsCookie177/hypermint"
+private const val LicenseUrl = "$RepositoryUrl/blob/master/LICENSE"
 
 private val HeroHeight = 320.dp
 private val CardMargin = AppDimens.ScreenPadding

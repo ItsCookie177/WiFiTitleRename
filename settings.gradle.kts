@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "WiFiTitleRename"
+rootProject.name = "HyperMint"
 include(":app")

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">WiFi Title Rename</string>
-    <string name="xposed_description">Mengganti nama WiFi yang tampil (WifiEntry.getTitle) tanpa mengubah SSID asli</string>
+    <string name="app_name">HyperMint</string>
+    <string name="xposed_description">HyperMint mengganti nama WiFi yang tampil (WifiEntry.getTitle) tanpa mengubah SSID asli</string>
 
     <string name="tab_mapping">Mapping</string>
     <string name="tab_settings">Pengaturan</string>
@@ -136,7 +136,7 @@
     <string name="icon_color_shortcut_sent">Permintaan shortcut dikirim. Jika tidak muncul, izinkan &quot;Buat shortcut&quot; di pengaturan launcher.</string>
     <string name="icon_color_shortcut_pinned">Shortcut kustom dipasang</string>
     <string name="icon_color_shortcut_help_title">Shortcut tidak tersedia</string>
-    <string name="icon_color_shortcut_help_body">Launcher ini tidak menerima permintaan shortcut. Buka pengaturan launcher, izinkan &quot;Buat shortcut&quot; (atau &quot;Tambahkan ke layar utama&quot;) untuk WiFi Title Rename, lalu coba lagi. Ikon template tetap berfungsi tanpa izin ini.</string>
+    <string name="icon_color_shortcut_help_body">Launcher ini tidak menerima permintaan shortcut. Buka pengaturan launcher, izinkan &quot;Buat shortcut&quot; (atau &quot;Tambahkan ke layar utama&quot;) untuk HyperMint, lalu coba lagi. Ikon template tetap berfungsi tanpa izin ini.</string>
     <string name="icon_color_reset">Atur ulang warna</string>
     <string name="icon_color_mode_grid">Grid</string>
     <string name="icon_color_mode_slider">Slider</string>
@@ -150,7 +150,7 @@
     <string name="icon_color_hue_value">%1$d°</string>
     <string name="icon_color_bg_opaque_note">Latar selalu sepenuhnya opak.</string>
     <string name="icon_custom_shortcut_label">WiFi kustom</string>
-    <string name="icon_custom_shortcut_long">WiFi Title Rename (ikon kustom)</string>
+    <string name="icon_custom_shortcut_long">HyperMint (ikon kustom)</string>
     <string name="icon_apply_failed">Gagal mengganti ikon launcher</string>
     <string name="ok">OK</string>
     <string name="about_icon_credit_heading">Kredit ikon</string>

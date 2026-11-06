@@ -1,4 +1,4 @@
-# WiFi Title Rename
+# HyperMint
 
 Modul Xposed (LSPosed/Vector) untuk mengganti NAMA TAMPILAN WiFi di HyperOS 2 / Android 15 (Xiaomi) tanpa mengubah SSID asli — hanya hook `WifiEntry.getTitle()`, logika koneksi tidak disentuh.
 
