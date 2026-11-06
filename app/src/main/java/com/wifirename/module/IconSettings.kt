@@ -15,8 +15,8 @@ object IconSettings {
     private const val KEY_CUSTOM_BG = "custom_bg"
     private const val KEY_CUSTOM_FG = "custom_fg"
 
-    private val DefaultBg = Color(0xFF1C1670)
-    private val DefaultFg = Color(0xFFE37DE6)
+    val defaultCustomBg: Color = Color(0xFF1C1670)
+    val defaultCustomFg: Color = Color(0xFFE37DE6)
 
     private fun prefs(context: Context) =
         context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
@@ -33,10 +33,10 @@ object IconSettings {
     }
 
     fun customBgColor(context: Context): Color =
-        Color(prefs(context).getInt(KEY_CUSTOM_BG, DefaultBg.toArgb()))
+        Color(prefs(context).getInt(KEY_CUSTOM_BG, defaultCustomBg.toArgb()))
 
     fun customFgColor(context: Context): Color =
-        Color(prefs(context).getInt(KEY_CUSTOM_FG, DefaultFg.toArgb()))
+        Color(prefs(context).getInt(KEY_CUSTOM_FG, defaultCustomFg.toArgb()))
 
     fun setCustomColors(context: Context, bg: Color, fg: Color) {
         prefs(context).edit()

@@ -44,6 +44,7 @@ import top.yukonga.miuix.kmp.icon.basic.Close
 import top.yukonga.miuix.kmp.icon.basic.Search
 import top.yukonga.miuix.kmp.icon.extended.Add
 import top.yukonga.miuix.kmp.icon.extended.ListView
+import top.yukonga.miuix.kmp.squircle.squircleClip
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import androidx.compose.ui.state.ToggleableState
 
@@ -77,21 +78,26 @@ fun MappingContent(
         modifier = Modifier
             .fillMaxSize()
             .nestedScroll(scrollBehavior.nestedScrollConnection),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(AppDimens.CardSpacing),
         contentPadding = PaddingValues(
-            start = 16.dp,
-            end = 16.dp,
             top = paddingValues.calculateTopPadding() + 12.dp,
-            bottom = paddingValues.calculateBottomPadding() + 24.dp,
+            bottom = paddingValues.calculateBottomPadding() + AppDimens.ContentBottom,
         ),
     ) {
         item(key = "summary") {
-            SummaryCard(count = mappings.size, selecting = selecting)
+            SummaryCard(
+                count = mappings.size,
+                selecting = selecting,
+                modifier = Modifier.padding(horizontal = AppDimens.ScreenPadding),
+            )
         }
 
         if (!infoDismissed) {
             item(key = "info") {
-                InfoCard(onDismiss = onInfoDismiss)
+                InfoCard(
+                    onDismiss = onInfoDismiss,
+                    modifier = Modifier.padding(horizontal = AppDimens.ScreenPadding),
+                )
             }
         }
 
@@ -100,7 +106,9 @@ fun MappingContent(
                 TextField(
                     value = searchQuery,
                     onValueChange = onSearchChanged,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = AppDimens.ScreenPadding),
                     insideMargin = DpSize(16.dp, 12.dp),
                     label = stringResource(R.string.search_hint),
                     leadingIcon = {
@@ -118,12 +126,20 @@ fun MappingContent(
 
         if (mappings.isEmpty() && !selecting) {
             item(key = "empty") {
-                EmptyCard()
+                EmptyCard(
+                    modifier = Modifier.padding(horizontal = AppDimens.ScreenPadding),
+                )
             }
         }
 
         item(key = "group") {
-            Card(insideMargin = PaddingValues(0.dp)) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = AppDimens.ScreenPadding)
+                    .squircleClip(AppDimens.CardCorner),
+                insideMargin = PaddingValues(0.dp),
+            ) {
                 Column {
                     if (mappings.isEmpty() && !selecting) {
                         AddMappingRow(onClick = onAddClick)
@@ -139,7 +155,7 @@ fun MappingContent(
                         )
                         if (!selecting) {
                             HorizontalDivider(
-                                modifier = Modifier.padding(start = 16.dp),
+                                modifier = Modifier.padding(horizontal = AppDimens.CardInside),
                                 thickness = 0.75.dp,
                                 color = MiuixTheme.colorScheme.dividerLine,
                             )
@@ -156,7 +172,7 @@ fun MappingContent(
                             )
                             if (index != visibleMappings.lastIndex) {
                                 HorizontalDivider(
-                                    modifier = Modifier.padding(start = 16.dp),
+                                    modifier = Modifier.padding(horizontal = AppDimens.CardInside),
                                     thickness = 0.75.dp,
                                     color = MiuixTheme.colorScheme.dividerLine,
                                 )
@@ -164,7 +180,7 @@ fun MappingContent(
                         }
                         if (!selecting) {
                             HorizontalDivider(
-                                modifier = Modifier.padding(start = 16.dp),
+                                modifier = Modifier.padding(horizontal = AppDimens.CardInside),
                                 thickness = 0.75.dp,
                                 color = MiuixTheme.colorScheme.dividerLine,
                             )
@@ -178,8 +194,15 @@ fun MappingContent(
 }
 
 @Composable
-private fun SummaryCard(count: Int, selecting: Boolean) {
-    Card(insideMargin = PaddingValues(16.dp, 14.dp)) {
+private fun SummaryCard(
+    count: Int,
+    selecting: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        insideMargin = PaddingValues(AppDimens.CardInside),
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -219,9 +242,18 @@ private fun SummaryCard(count: Int, selecting: Boolean) {
 }
 
 @Composable
-private fun InfoCard(onDismiss: () -> Unit) {
-    Card {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+private fun InfoCard(
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        insideMargin = PaddingValues(AppDimens.CardInside),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = stringResource(R.string.guide_title),
@@ -339,8 +371,11 @@ private fun AddMappingRow(onClick: () -> Unit) {
 }
 
 @Composable
-private fun EmptyCard() {
-    Card {
+private fun EmptyCard(modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        insideMargin = PaddingValues(AppDimens.CardInside),
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -369,7 +404,7 @@ private fun EmptyCard() {
             )
             Text(
                 text = stringResource(R.string.empty_body),
-                modifier = Modifier.padding(top = 4.dp, start = 24.dp, end = 24.dp),
+                modifier = Modifier.padding(top = 4.dp, start = AppDimens.CardInside, end = AppDimens.CardInside),
                 fontSize = 13.sp,
                 color = MiuixTheme.colorScheme.onSurfaceContainerVariant,
                 textAlign = TextAlign.Center,

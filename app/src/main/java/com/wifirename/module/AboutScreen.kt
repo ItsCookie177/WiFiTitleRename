@@ -92,6 +92,7 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.squircle.squircleClip
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixIndication
 import java.io.File
@@ -101,7 +102,7 @@ private const val RepositoryUrl = "https://github.com/ItsCookie177/WiFiTitleRena
 private const val LicenseUrl = "https://github.com/ItsCookie177/WiFiTitleRename/blob/master/LICENSE"
 
 private val HeroHeight = 320.dp
-private val CardMargin = 12.dp
+private val CardMargin = AppDimens.ScreenPadding
 
 // Title gradient sampled from the HyperOS "About phone" header (magenta -> peach).
 // The light-theme variant is darkened to keep contrast on the pastel background.
@@ -380,8 +381,9 @@ fun AboutScreen(versionText: String, dark: Boolean, onBack: () -> Unit) {
                 Card(
                     modifier = Modifier
                         .padding(horizontal = CardMargin)
-                        .fillMaxWidth(),
-                    cornerRadius = 16.dp,
+                        .fillMaxWidth()
+                        .squircleClip(AppDimens.CardCorner),
+                    cornerRadius = AppDimens.CardCorner,
                     insideMargin = PaddingValues(0.dp),
                     colors = cardColors,
                 ) {
@@ -389,7 +391,7 @@ fun AboutScreen(versionText: String, dark: Boolean, onBack: () -> Unit) {
                         InfoRow(field = field, secondary = secondary)
                         if (index != primaryInfo.lastIndex) {
                             HorizontalDivider(
-                                modifier = Modifier.padding(start = 16.dp),
+                                modifier = Modifier.padding(horizontal = AppDimens.CardInside),
                                 thickness = 0.75.dp,
                                 color = MiuixTheme.colorScheme.dividerLine,
                             )
@@ -403,8 +405,9 @@ fun AboutScreen(versionText: String, dark: Boolean, onBack: () -> Unit) {
                 Card(
                     modifier = Modifier
                         .padding(horizontal = CardMargin)
-                        .fillMaxWidth(),
-                    cornerRadius = 16.dp,
+                        .fillMaxWidth()
+                        .squircleClip(AppDimens.CardCorner),
+                    cornerRadius = AppDimens.CardCorner,
                     insideMargin = PaddingValues(0.dp),
                     colors = cardColors,
                 ) {
@@ -416,8 +419,9 @@ fun AboutScreen(versionText: String, dark: Boolean, onBack: () -> Unit) {
             Card(
                 modifier = Modifier
                     .padding(horizontal = CardMargin)
-                    .fillMaxWidth(),
-                cornerRadius = 16.dp,
+                    .fillMaxWidth()
+                    .squircleClip(AppDimens.CardCorner),
+                cornerRadius = AppDimens.CardCorner,
                 insideMargin = PaddingValues(0.dp),
                 colors = cardColors,
             ) {
@@ -429,7 +433,7 @@ fun AboutScreen(versionText: String, dark: Boolean, onBack: () -> Unit) {
                     },
                 )
                 HorizontalDivider(
-                    modifier = Modifier.padding(start = 16.dp),
+                    modifier = Modifier.padding(horizontal = AppDimens.CardInside),
                     thickness = 0.75.dp,
                     color = MiuixTheme.colorScheme.dividerLine,
                 )
@@ -446,7 +450,7 @@ fun AboutScreen(versionText: String, dark: Boolean, onBack: () -> Unit) {
                 text = stringResource(R.string.about_third_party_heading),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 24.dp, end = 24.dp, top = 28.dp, bottom = 8.dp),
+                    .padding(start = AppDimens.ScreenPadding + AppDimens.CardInside, end = AppDimens.ScreenPadding + AppDimens.CardInside, top = 28.dp, bottom = 8.dp),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = secondary,
@@ -455,8 +459,9 @@ fun AboutScreen(versionText: String, dark: Boolean, onBack: () -> Unit) {
             Card(
                 modifier = Modifier
                     .padding(horizontal = CardMargin)
-                    .fillMaxWidth(),
-                cornerRadius = 16.dp,
+                    .fillMaxWidth()
+                    .squircleClip(AppDimens.CardCorner),
+                cornerRadius = AppDimens.CardCorner,
                 insideMargin = PaddingValues(0.dp),
                 colors = cardColors,
             ) {
@@ -464,7 +469,7 @@ fun AboutScreen(versionText: String, dark: Boolean, onBack: () -> Unit) {
                     LicenseRow(entry = entry, secondary = secondary)
                     if (index != ThirdPartyLicenses.lastIndex) {
                         HorizontalDivider(
-                            modifier = Modifier.padding(start = 16.dp),
+                            modifier = Modifier.padding(horizontal = AppDimens.CardInside),
                             thickness = 0.75.dp,
                             color = MiuixTheme.colorScheme.dividerLine,
                         )
@@ -476,7 +481,7 @@ fun AboutScreen(versionText: String, dark: Boolean, onBack: () -> Unit) {
                 text = stringResource(R.string.about_icon_credit_heading),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 8.dp),
+                    .padding(start = AppDimens.ScreenPadding + AppDimens.CardInside, end = AppDimens.ScreenPadding + AppDimens.CardInside, top = 24.dp, bottom = 8.dp),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = secondary,
@@ -485,8 +490,9 @@ fun AboutScreen(versionText: String, dark: Boolean, onBack: () -> Unit) {
             Card(
                 modifier = Modifier
                     .padding(horizontal = CardMargin)
-                    .fillMaxWidth(),
-                cornerRadius = 16.dp,
+                    .fillMaxWidth()
+                    .squircleClip(AppDimens.CardCorner),
+                cornerRadius = AppDimens.CardCorner,
                 insideMargin = PaddingValues(0.dp),
                 colors = cardColors,
             ) {
@@ -494,7 +500,7 @@ fun AboutScreen(versionText: String, dark: Boolean, onBack: () -> Unit) {
                     LicenseRow(entry = entry, secondary = secondary)
                     if (index != IconCredits.lastIndex) {
                         HorizontalDivider(
-                            modifier = Modifier.padding(start = 16.dp),
+                            modifier = Modifier.padding(horizontal = AppDimens.CardInside),
                             thickness = 0.75.dp,
                             color = MiuixTheme.colorScheme.dividerLine,
                         )
@@ -504,14 +510,14 @@ fun AboutScreen(versionText: String, dark: Boolean, onBack: () -> Unit) {
 
             Text(
                 text = stringResource(R.string.about_icon_credit_note),
-                modifier = Modifier.padding(start = 28.dp, end = 28.dp, top = 8.dp),
+                modifier = Modifier.padding(start = AppDimens.ScreenPadding + AppDimens.CardInside, end = AppDimens.ScreenPadding + AppDimens.CardInside, top = 8.dp),
                 fontSize = 12.sp,
                 color = secondary,
             )
 
             Text(
                 text = stringResource(R.string.about_licenses_note),
-                modifier = Modifier.padding(start = 28.dp, end = 28.dp, top = 12.dp),
+                modifier = Modifier.padding(start = AppDimens.ScreenPadding + AppDimens.CardInside, end = AppDimens.ScreenPadding + AppDimens.CardInside, top = 12.dp),
                 fontSize = 12.sp,
                 color = secondary,
             )

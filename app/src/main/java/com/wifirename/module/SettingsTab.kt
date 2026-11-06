@@ -3,6 +3,7 @@ package com.wifirename.module
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
@@ -18,6 +19,7 @@ import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
+import top.yukonga.miuix.kmp.squircle.squircleClip
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable
@@ -49,19 +51,17 @@ fun SettingsContent(
         modifier = Modifier
             .fillMaxSize()
             .nestedScroll(scrollBehavior.nestedScrollConnection),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(AppDimens.CardSpacing),
         contentPadding = PaddingValues(
-            start = 16.dp,
-            end = 16.dp,
             top = paddingValues.calculateTopPadding() + 12.dp,
-            bottom = paddingValues.calculateBottomPadding() + 24.dp,
+            bottom = paddingValues.calculateBottomPadding() + AppDimens.ContentBottom,
         ),
     ) {
         item(key = "g1-title") {
-            SmallTitle(text = stringResource(R.string.section_appearance))
+            SectionTitle(stringResource(R.string.section_appearance))
         }
         item(key = "g1-card") {
-            Card(insideMargin = PaddingValues(16.dp, 6.dp)) {
+            SettingsCard {
                 OverlayDropdownPreference(
                     title = stringResource(R.string.setting_theme),
                     items = themeOptions,
@@ -77,7 +77,7 @@ fun SettingsContent(
                     },
                 )
                 HorizontalDivider(
-                    modifier = Modifier.padding(start = 16.dp),
+                    modifier = Modifier.padding(horizontal = AppDimens.CardInside),
                     thickness = 0.75.dp,
                     color = MiuixTheme.colorScheme.dividerLine,
                 )
@@ -90,10 +90,10 @@ fun SettingsContent(
         }
 
         item(key = "g2-title") {
-            SmallTitle(text = stringResource(R.string.section_backup))
+            SectionTitle(stringResource(R.string.section_backup))
         }
         item(key = "g2-card") {
-            Card(insideMargin = PaddingValues(16.dp, 6.dp)) {
+            SettingsCard {
                 ArrowPreference(
                     title = stringResource(R.string.export_title),
                     summary = stringResource(R.string.export_summary),
@@ -108,10 +108,10 @@ fun SettingsContent(
         }
 
         item(key = "g3-title") {
-            SmallTitle(text = stringResource(R.string.section_other))
+            SectionTitle(stringResource(R.string.section_other))
         }
         item(key = "g3-card") {
-            Card(insideMargin = PaddingValues(16.dp, 6.dp)) {
+            SettingsCard {
                 ArrowPreference(
                     title = stringResource(R.string.settings_guide),
                     onClick = onShowGuide,
@@ -132,4 +132,28 @@ fun SettingsContent(
             }
         }
     }
+}
+
+@Composable
+private fun SectionTitle(text: String) {
+    SmallTitle(
+        text = text,
+        modifier = Modifier.padding(horizontal = AppDimens.ScreenPadding),
+        insideMargin = PaddingValues(
+            horizontal = AppDimens.CardInside,
+            vertical = AppDimens.SectionTitleVertical,
+        ),
+    )
+}
+
+@Composable
+private fun SettingsCard(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = AppDimens.ScreenPadding)
+            .squircleClip(AppDimens.CardCorner),
+        insideMargin = PaddingValues(0.dp),
+        content = content,
+    )
 }

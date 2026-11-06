@@ -26,6 +26,15 @@ object AppSettings {
             .edit().putString("theme_mode", mode).apply()
     }
 
+    fun iconColorMode(context: Context): Int =
+        context.getSharedPreferences(SETTINGS_FILE, Context.MODE_PRIVATE)
+            .getInt("icon_color_mode", 1)
+
+    fun setIconColorMode(context: Context, mode: Int) {
+        context.getSharedPreferences(SETTINGS_FILE, Context.MODE_PRIVATE)
+            .edit().putInt("icon_color_mode", mode).apply()
+    }
+
     fun loadMappings(caller: Context): LinkedHashMap<String, String> {
         val sp = prefs(caller)
         val normalized = LinkedHashMap<String, String>()

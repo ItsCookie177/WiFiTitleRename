@@ -1,7 +1,7 @@
 package com.wifirename.module
 
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -14,21 +14,17 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -36,13 +32,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -54,8 +48,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.ColorPicker
-import top.yukonga.miuix.kmp.basic.ColorSpace
 import top.yukonga.miuix.kmp.basic.DropdownItem
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
@@ -63,23 +55,16 @@ import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
-import top.yukonga.miuix.kmp.basic.TabRow
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.Check
 import top.yukonga.miuix.kmp.icon.extended.Back
-import top.yukonga.miuix.kmp.icon.extended.ExpandLess
 import top.yukonga.miuix.kmp.icon.extended.ExpandMore
-import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
-import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.OverlaySpinnerPreference
 import top.yukonga.miuix.kmp.squircle.squircleClip
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import java.util.Locale
 
 @Composable
 fun IconsColorsScreen(
@@ -114,13 +99,11 @@ fun IconsColorsScreen(
     ) { paddingValues ->
         Box(Modifier.fillMaxSize()) {
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(AppDimens.CardSpacing),
                 contentPadding = PaddingValues(
                     top = paddingValues.calculateTopPadding() + 12.dp,
-                    bottom = paddingValues.calculateBottomPadding() + 24.dp,
+                    bottom = paddingValues.calculateBottomPadding() + AppDimens.ContentBottom,
                 ),
             ) {
                 item(key = "active") {
@@ -128,14 +111,19 @@ fun IconsColorsScreen(
                         activeIconId = activeIconId,
                         expanded = expanded,
                         onToggle = { expanded = !expanded },
+                        modifier = Modifier.padding(horizontal = AppDimens.ScreenPadding),
                     )
                 }
                 if (expanded) {
                     item(key = "simple-title") {
-                        SmallTitle(text = stringResource(R.string.icons_section_simple))
+                        SectionTitle(stringResource(R.string.icons_section_simple))
                     }
                     item(key = "simple-row") {
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        LazyRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentPadding = PaddingValues(horizontal = AppDimens.ScreenPadding),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
                             items(IconCatalog.templates, key = { it.id }) { template ->
                                 IconTile(
                                     iconId = template.id,
@@ -147,10 +135,14 @@ fun IconsColorsScreen(
                         }
                     }
                     item(key = "anime-title") {
-                        SmallTitle(text = stringResource(R.string.icons_section_anime))
+                        SectionTitle(stringResource(R.string.icons_section_anime))
                     }
                     item(key = "anime-row") {
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        LazyRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentPadding = PaddingValues(horizontal = AppDimens.ScreenPadding),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
                             items(IconCatalog.extras, key = { it.id }) { extra ->
                                 IconTile(
                                     iconId = extra.id,
@@ -162,13 +154,14 @@ fun IconsColorsScreen(
                         }
                     }
                     item(key = "color-title") {
-                        SmallTitle(text = stringResource(R.string.icon_color_section))
+                        SectionTitle(stringResource(R.string.icon_color_section))
                     }
                     item(key = "color-card") {
                         ColorTemplateCard(
                             activeIconId = activeIconId,
                             onIconSelected = onIconSelected,
                             onCustom = { showCustom = true },
+                            modifier = Modifier.padding(horizontal = AppDimens.ScreenPadding),
                         )
                     }
                 }
@@ -176,8 +169,13 @@ fun IconsColorsScreen(
                     Text(
                         text = stringResource(R.string.icons_footer),
                         fontSize = 12.sp,
+                        lineHeight = 16.sp,
                         color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                        modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 4.dp),
+                        modifier = Modifier.padding(
+                            start = AppDimens.ScreenPadding + AppDimens.CardInside,
+                            end = AppDimens.ScreenPadding + AppDimens.CardInside,
+                            top = 4.dp,
+                        ),
                     )
                 }
             }
@@ -190,22 +188,46 @@ fun IconsColorsScreen(
 }
 
 @Composable
+private fun SectionTitle(text: String) {
+    SmallTitle(
+        text = text,
+        modifier = Modifier.padding(horizontal = AppDimens.ScreenPadding),
+        insideMargin = PaddingValues(
+            horizontal = AppDimens.CardInside,
+            vertical = AppDimens.SectionTitleVertical,
+        ),
+    )
+}
+
+@Composable
 private fun ActiveIconCard(
     activeIconId: String,
     expanded: Boolean,
     onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Card(insideMargin = PaddingValues(16.dp)) {
+    val rotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        label = "active-chevron",
+    )
+    Card(
+        onClick = onToggle,
+        showIndication = true,
+        modifier = modifier
+            .fillMaxWidth()
+            .squircleClip(AppDimens.CardCorner),
+        insideMargin = PaddingValues(AppDimens.CardInside),
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconPreview(
                 iconId = activeIconId,
-                modifier = Modifier.size(72.dp),
+                modifier = Modifier.size(64.dp),
             )
-            Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.width(AppDimens.CardInside))
             Column(Modifier.weight(1f)) {
                 Text(
                     text = stringResource(IconCatalog.labelRes(activeIconId)),
-                    fontSize = 18.sp,
+                    fontSize = 17.sp,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
@@ -215,16 +237,22 @@ private fun ActiveIconCard(
                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                 )
             }
-            IconButton(
-                onClick = onToggle,
-                minWidth = 48.dp,
-                minHeight = 48.dp,
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(MiuixTheme.colorScheme.surfaceContainerHigh),
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    imageVector = if (expanded) MiuixIcons.ExpandLess else MiuixIcons.ExpandMore,
+                    imageVector = MiuixIcons.ExpandMore,
                     contentDescription = stringResource(
                         if (expanded) R.string.icons_collapse else R.string.icons_expand,
                     ),
+                    modifier = Modifier
+                        .size(18.dp)
+                        .rotate(rotation),
+                    tint = MiuixTheme.colorScheme.onSurfaceContainerHigh,
                 )
             }
         }
@@ -241,7 +269,7 @@ private fun IconTile(
     Column(
         modifier = Modifier
             .width(80.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(AppDimens.CardCorner))
             .selectable(
                 selected = selected,
                 onClick = onClick,
@@ -293,7 +321,8 @@ private fun IconTile(
         Text(
             text = label,
             fontSize = 12.sp,
-            maxLines = 1,
+            lineHeight = 15.sp,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
         )
@@ -339,30 +368,38 @@ private fun ColorTemplateCard(
     activeIconId: String,
     onIconSelected: (String) -> Unit,
     onCustom: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val active = IconCatalog.template(activeIconId)
+    val activeTemplate = IconCatalog.template(activeIconId) ?: IconCatalog.templates.first()
     val selectedIndex = IconCatalog.templates.indexOfFirst { it.id == activeIconId }
+        .takeIf { it >= 0 } ?: 0
     val items = IconCatalog.templates.map { template ->
         DropdownItem(
             text = stringResource(template.nameRes),
             summary = stringResource(template.summaryRes),
-            icon = { modifier ->
-                TemplateSwatch(template.swatch, modifier)
+            icon = { swatchModifier ->
+                TemplateSwatch(template.swatch, swatchModifier)
             },
         )
     }
-    Card(insideMargin = PaddingValues(16.dp, 6.dp)) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .squircleClip(AppDimens.CardCorner),
+        insideMargin = PaddingValues(0.dp),
+    ) {
         OverlaySpinnerPreference(
             items = items,
             selectedIndex = selectedIndex,
             title = stringResource(R.string.icon_color_template),
-            summary = active?.let { stringResource(it.summaryRes) },
+            summary = stringResource(activeTemplate.summaryRes),
+            showValue = true,
             onSelectedIndexChange = { index ->
                 IconCatalog.templates.getOrNull(index)?.let { onIconSelected(it.id) }
             },
         )
         HorizontalDivider(
-            modifier = Modifier.padding(start = 16.dp),
+            modifier = Modifier.padding(horizontal = AppDimens.CardInside),
             thickness = 0.75.dp,
             color = MiuixTheme.colorScheme.dividerLine,
         )
@@ -387,196 +424,4 @@ private fun TemplateSwatch(colors: List<Color>, modifier: Modifier) {
             .clip(RoundedCornerShape(7.dp))
             .background(brush),
     )
-}
-
-@Composable
-private fun CustomColorSheet(
-    show: Boolean,
-    onDismiss: () -> Unit,
-) {
-    val context = LocalContext.current
-    var bg by remember { mutableStateOf(IconSettings.customBgColor(context)) }
-    var fg by remember { mutableStateOf(IconSettings.customFgColor(context)) }
-    var target by rememberSaveable { mutableIntStateOf(0) }
-    var bgHex by remember { mutableStateOf(bg.toHex()) }
-    var fgHex by remember { mutableStateOf(fg.toHex()) }
-    var showHelp by remember { mutableStateOf(false) }
-
-    OverlayBottomSheet(
-        show = show,
-        title = stringResource(R.string.icon_color_custom_title),
-        onDismissRequest = onDismiss,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .imePadding()
-                .padding(horizontal = 20.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-            ) {
-                CustomPreview(bg = bg, fg = fg, circle = false, modifier = Modifier.size(96.dp))
-                CustomPreview(bg = bg, fg = fg, circle = true, modifier = Modifier.size(96.dp))
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-            ) {
-                Text(
-                    text = stringResource(R.string.icon_color_preview_squircle),
-                    fontSize = 12.sp,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                )
-                Text(
-                    text = stringResource(R.string.icon_color_preview_circle),
-                    fontSize = 12.sp,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                )
-            }
-            if (IconSwitcher.contrastRatio(bg, fg) < 3f) {
-                Text(
-                    text = stringResource(R.string.icon_color_contrast_warning),
-                    fontSize = 12.sp,
-                    color = MiuixTheme.colorScheme.error,
-                )
-            }
-            Text(
-                text = stringResource(R.string.icon_color_shortcut_explained),
-                fontSize = 13.sp,
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-            )
-            TabRow(
-                tabs = listOf(
-                    stringResource(R.string.icon_color_background),
-                    stringResource(R.string.icon_color_glyph),
-                ),
-                selectedTabIndex = target,
-                onTabSelected = { target = it },
-            )
-            val current = if (target == 0) bg else fg
-            ColorPicker(
-                color = current,
-                onColorChanged = { color ->
-                    if (target == 0) {
-                        bg = color
-                        bgHex = color.toHex()
-                        IconSettings.setCustomColors(context, color, fg)
-                    } else {
-                        fg = color
-                        fgHex = color.toHex()
-                        IconSettings.setCustomColors(context, bg, color)
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                showPreview = false,
-                colorSpace = ColorSpace.OKLCH,
-            )
-            val hex = if (target == 0) bgHex else fgHex
-            TextField(
-                value = hex,
-                onValueChange = { value ->
-                    val upper = value.uppercase(Locale.US)
-                    if (target == 0) {
-                        bgHex = upper
-                    } else {
-                        fgHex = upper
-                    }
-                    parseHex(upper)?.let { parsed ->
-                        if (target == 0) {
-                            bg = parsed
-                            IconSettings.setCustomColors(context, parsed, fg)
-                        } else {
-                            fg = parsed
-                            IconSettings.setCustomColors(context, bg, parsed)
-                        }
-                    }
-                },
-                label = stringResource(R.string.icon_color_hex),
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-            )
-            if (parseHex(hex) == null) {
-                Text(
-                    text = stringResource(R.string.icon_color_hex_invalid),
-                    fontSize = 12.sp,
-                    color = MiuixTheme.colorScheme.error,
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                TextButton(
-                    text = stringResource(R.string.cancel),
-                    onClick = onDismiss,
-                    modifier = Modifier.weight(1f),
-                )
-                TextButton(
-                    text = stringResource(R.string.icon_color_install_shortcut),
-                    onClick = {
-                        IconSettings.setCustomColors(context, bg, fg)
-                        when (IconSwitcher.pinCustomShortcut(context, bg, fg)) {
-                            PinResult.REQUESTED -> Toast.makeText(
-                                context,
-                                context.getString(R.string.icon_color_shortcut_sent),
-                                Toast.LENGTH_LONG,
-                            ).show()
-
-                            PinResult.UNSUPPORTED, PinResult.FAILED -> showHelp = true
-                        }
-                    },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-    }
-    OverlayDialog(
-        show = showHelp,
-        title = stringResource(R.string.icon_color_shortcut_help_title),
-        summary = stringResource(R.string.icon_color_shortcut_help_body),
-        onDismissRequest = { showHelp = false },
-    ) {
-        TextButton(
-            text = stringResource(R.string.ok),
-            onClick = { showHelp = false },
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
-}
-
-@Composable
-private fun CustomPreview(
-    bg: Color,
-    fg: Color,
-    circle: Boolean,
-    modifier: Modifier,
-) {
-    val shaped = if (circle) {
-        modifier.clip(CircleShape)
-    } else {
-        modifier.squircleClip(26.dp)
-    }
-    Box(shaped.background(bg)) {
-        Image(
-            painter = painterResource(R.drawable.ic_caret_wave_glyph),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.FillBounds,
-            colorFilter = ColorFilter.tint(fg),
-        )
-    }
-}
-
-private fun Color.toHex(): String =
-    String.format(Locale.US, "#%06X", toArgb() and 0xFFFFFF)
-
-private fun parseHex(value: String): Color? {
-    val text = value.trim().removePrefix("#")
-    if (text.length != 6) return null
-    val rgb = text.toLongOrNull(16) ?: return null
-    return Color((0xFF000000L or rgb).toInt())
 }
