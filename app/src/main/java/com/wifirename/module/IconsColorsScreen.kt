@@ -69,8 +69,8 @@ import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.basic.Check
 import top.yukonga.miuix.kmp.icon.extended.Back
-import top.yukonga.miuix.kmp.icon.extended.Check
 import top.yukonga.miuix.kmp.icon.extended.ExpandLess
 import top.yukonga.miuix.kmp.icon.extended.ExpandMore
 import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
@@ -281,7 +281,7 @@ private fun IconTile(
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        imageVector = MiuixIcons.Check,
+                        imageVector = MiuixIcons.Basic.Check,
                         contentDescription = null,
                         modifier = Modifier.size(12.dp),
                         tint = MiuixTheme.colorScheme.onPrimary,
