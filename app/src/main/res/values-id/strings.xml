@@ -7,23 +7,47 @@
     <string name="tab_settings">Pengaturan</string>
     <string name="title_settings">Pengaturan</string>
 
-    <string name="mapping_count">%1$d mapping</string>
     <string name="summary_hint">Ketuk untuk edit, tahan untuk memilih</string>
-    <string name="summary_hint_selecting">Pilih mapping yang ingin dihapus</string>
 
     <string name="guide_title">Aktifkan modul di Vector/LSPosed</string>
     <string name="guide_body">Lalu restart SystemUI agar nama WiFi berubah.</string>
     <string name="action_dismiss_guide">Tutup panduan aktivasi</string>
     <string name="settings_guide">Panduan aktivasi</string>
 
-    <string name="search_hint">Cari nama WiFi</string>
+    <string name="search_hint">Cari</string>
+    <string name="action_clear_search">Hapus pencarian</string>
+    <string name="no_results_query">Tidak ada hasil untuk &quot;%1$s&quot;</string>
+
+    <string name="restart_title">Mulai ulang</string>
+    <string name="action_restart">Restart</string>
+    <string name="restart_system_ui">Restart System UI</string>
+    <string name="restart_settings">Restart Pengaturan</string>
+    <string name="restart_both">Restart keduanya</string>
+    <string name="restart_system_ui_title">Restart System UI?</string>
+    <string name="restart_settings_title">Restart Pengaturan?</string>
+    <string name="restart_both_title">Restart System UI dan Pengaturan?</string>
+    <string name="restart_system_ui_confirm">System UI akan dimulai ulang dan layar mungkin berkedip sebentar.</string>
+    <string name="restart_settings_confirm">Pengaturan akan dihentikan dan dibuka ulang saat dijalankan lagi.</string>
+    <string name="restart_both_confirm">System UI dan Pengaturan akan dimulai ulang. Layar mungkin berkedip sebentar.</string>
+    <string name="restart_confirm_action">Mulai ulang</string>
+    <string name="restart_success_system_ui">System UI direstart</string>
+    <string name="restart_success_settings">Pengaturan direstart</string>
+    <string name="restart_success_both">System UI dan Pengaturan direstart</string>
+    <string name="restart_failed_title">Restart gagal</string>
+    <string name="restart_failed_su">Akses root (su) tidak tersedia atau ditolak. Periksa pengelola root, lalu jalankan perintah secara manual.</string>
+    <string name="restart_failed_su_timeout">Akses root tidak merespons tepat waktu. Pastikan su tersedia dan akses diberikan.</string>
+    <string name="restart_failed_denied">Akses root ditolak. Jalankan perintah manual di terminal root.</string>
+    <string name="restart_failed_command">Perintah gagal: %1$s (exit %2$d)</string>
+    <string name="restart_failed_command_detail">Perintah gagal: %1$s (exit %2$d)\n%3$s</string>
+    <string name="restart_manual_hint">Jalankan manual di terminal root:</string>
+    <string name="restart_copy_command">Salin perintah</string>
+    <string name="restart_copied">Perintah disalin</string>
+    <string name="restart_close">Tutup</string>
 
     <string name="empty_title">Belum ada mapping</string>
     <string name="empty_body">Tambahkan SSID asli dan nama tampilan baru untuk mulai mengganti judul WiFi.</string>
-    <string name="no_results">Tidak ada mapping yang cocok</string>
 
     <string name="add_mapping">Tambah mapping</string>
-    <string name="action_add_mapping">Tambah mapping</string>
 
     <string name="action_exit_selection">Keluar dari mode pilih</string>
     <string name="action_select_all">Pilih semua</string>

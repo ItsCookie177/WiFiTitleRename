@@ -2,6 +2,7 @@ package com.wifirename.module
 
 import android.net.Uri
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -19,13 +20,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -44,12 +47,15 @@ import top.yukonga.miuix.kmp.basic.TextButtonColors
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Add
 import top.yukonga.miuix.kmp.icon.extended.Close
 import top.yukonga.miuix.kmp.icon.extended.Delete
 import top.yukonga.miuix.kmp.icon.extended.ListView
+import top.yukonga.miuix.kmp.icon.extended.Refresh
 import top.yukonga.miuix.kmp.icon.extended.SelectAll
 import top.yukonga.miuix.kmp.icon.extended.Settings
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -93,6 +99,9 @@ fun AppRoot(
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
     val mappingScrollBehavior = MiuixScrollBehavior()
     val settingsScrollBehavior = MiuixScrollBehavior()
+    val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
+    val scope = rememberCoroutineScope()
     var infoDismissed by rememberSaveable { mutableStateOf(false) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
 
@@ -113,6 +122,10 @@ fun AppRoot(
     var showImportAsk by rememberSaveable { mutableStateOf(false) }
     var pendingReplace by rememberSaveable { mutableStateOf(false) }
     var showClearAllAsk by rememberSaveable { mutableStateOf(false) }
+    var showRestartMenu by remember { mutableStateOf(false) }
+    var restartTarget by remember { mutableStateOf<RestartTarget?>(null) }
+    var restartFailure by remember { mutableStateOf<RestartFailure?>(null) }
+    var restarting by remember { mutableStateOf(false) }
 
     fun exitSelection() {
         selecting = false
@@ -120,20 +133,24 @@ fun AppRoot(
     }
 
     fun openEditor(m: Mapping?) {
+        focusManager.clearFocus()
         editingOriginal = m?.ssid
         ssidInput = m?.ssid ?: ""
         labelInput = m?.label ?: ""
         showEditor = true
     }
 
-    val visibleMappings = filterMappings(mappings, searchQuery)
+    val filteredMappings = filterMappings(mappings, searchQuery)
+    val visibleMappings = if (selecting) mappings else filteredMappings
 
     LaunchedEffect(tab) {
         if (selecting) exitSelection()
     }
-    LaunchedEffect(mappings.size, selectedSsids.size) {
+    LaunchedEffect(mappings.toList(), selecting) {
         if (selecting) {
-            selectedSsids = selectedSsids.intersect(mappings.map { it.ssid }.toSet())
+            val valid = mappings.mapTo(HashSet<String>()) { it.ssid }
+            val pruned = selectedSsids.intersect(valid)
+            if (pruned != selectedSsids) selectedSsids = pruned
             if (mappings.isEmpty()) exitSelection()
         }
     }
@@ -255,13 +272,17 @@ fun AppRoot(
                                     scrollBehavior = mappingScrollBehavior,
                                     actions = {
                                         IconButton(
-                                            onClick = { openEditor(null) },
+                                            onClick = {
+                                                focusManager.clearFocus()
+                                                if (!restarting) showRestartMenu = true
+                                            },
+                                            enabled = !restarting,
                                             minWidth = 48.dp,
                                             minHeight = 48.dp,
                                         ) {
                                             Icon(
-                                                imageVector = MiuixIcons.Add,
-                                                contentDescription = stringResource(R.string.action_add_mapping),
+                                                imageVector = MiuixIcons.Refresh,
+                                                contentDescription = stringResource(R.string.action_restart),
                                             )
                                         }
                                     },
@@ -281,6 +302,7 @@ fun AppRoot(
                         NavigationBarItem(
                             selected = tab == Tabs.MAPPING,
                             onClick = {
+                                focusManager.clearFocus()
                                 Log.d(LOG_TAG, "tab -> mapping")
                                 tab = Tabs.MAPPING
                             },
@@ -290,6 +312,7 @@ fun AppRoot(
                         NavigationBarItem(
                             selected = tab == Tabs.SETTINGS,
                             onClick = {
+                                focusManager.clearFocus()
                                 Log.d(LOG_TAG, "tab -> settings")
                                 exitSelection()
                                 tab = Tabs.SETTINGS
@@ -551,6 +574,52 @@ fun AppRoot(
                             )
                         }
                     }
+                }
+
+                if (showRestartMenu) {
+                    RestartMenuDialog(
+                        show = showRestartMenu,
+                        onDismiss = { showRestartMenu = false },
+                        onSelect = { target ->
+                            showRestartMenu = false
+                            restartTarget = target
+                        },
+                    )
+                }
+
+                restartTarget?.let { target ->
+                    RestartConfirmDialog(
+                        target = target,
+                        onDismiss = { restartTarget = null },
+                        onConfirm = {
+                            restartTarget = null
+                            if (!restarting) {
+                                restarting = true
+                                scope.launch {
+                                    val failure = withContext(Dispatchers.IO) {
+                                        RestartRunner.run(context.applicationContext, target)
+                                    }
+                                    restarting = false
+                                    if (failure == null) {
+                                        Toast.makeText(
+                                            context,
+                                            target.successToast,
+                                            Toast.LENGTH_SHORT,
+                                        ).show()
+                                    } else {
+                                        restartFailure = failure
+                                    }
+                                }
+                            }
+                        },
+                    )
+                }
+
+                restartFailure?.let { failure ->
+                    RestartFailureDialog(
+                        failure = failure,
+                        onDismiss = { restartFailure = null },
+                    )
                 }
 
             }

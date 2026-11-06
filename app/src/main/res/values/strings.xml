@@ -7,23 +7,51 @@
     <string name="tab_settings">Settings</string>
     <string name="title_settings">Settings</string>
 
-    <string name="mapping_count">%1$d mappings</string>
     <string name="summary_hint">Tap a row to edit, long-press to select</string>
-    <string name="summary_hint_selecting">Select the mappings you want to delete</string>
 
     <string name="guide_title">Enable the module in Vector/LSPosed</string>
     <string name="guide_body">Then restart SystemUI so the WiFi names change.</string>
     <string name="action_dismiss_guide">Dismiss activation guide</string>
     <string name="settings_guide">Activation guide</string>
 
-    <string name="search_hint">Search WiFi name</string>
+    <string name="search_hint">Search</string>
+    <string name="action_clear_search">Clear search</string>
+    <string name="no_results_query">No results for &quot;%1$s&quot;</string>
+
+    <string name="restart_title">Restart</string>
+    <string name="action_restart">Restart</string>
+    <string name="restart_system_ui">Restart System UI</string>
+    <string name="restart_settings">Restart Settings</string>
+    <string name="restart_both">Restart both</string>
+    <string name="restart_system_ui_title">Restart System UI?</string>
+    <string name="restart_settings_title">Restart Settings?</string>
+    <string name="restart_both_title">Restart System UI and Settings?</string>
+    <string name="restart_system_ui_confirm">System UI will restart and the screen may flicker briefly.</string>
+    <string name="restart_settings_confirm">Settings will be stopped and will reopen fresh next time.</string>
+    <string name="restart_both_confirm">System UI and Settings will restart. The screen may flicker briefly.</string>
+    <string name="restart_confirm_action">Restart</string>
+    <string name="restart_success_system_ui">System UI restarted</string>
+    <string name="restart_success_settings">Settings restarted</string>
+    <string name="restart_success_both">System UI and Settings restarted</string>
+    <string name="restart_failed_title">Restart failed</string>
+    <string name="restart_failed_su">Root access (su) is unavailable or was denied. Check your root manager, then run the command manually.</string>
+    <string name="restart_failed_su_timeout">Root access did not respond in time. Check that su is available and access is granted.</string>
+    <string name="restart_failed_denied">Root access was denied. Run the command manually in a root terminal.</string>
+    <string name="restart_failed_command">Command failed: %1$s (exit %2$d)</string>
+    <string name="restart_failed_command_detail">Command failed: %1$s (exit %2$d)\n%3$s</string>
+    <string name="restart_manual_hint">Run this manually in a root terminal:</string>
+    <string name="restart_copy_command">Copy command</string>
+    <string name="restart_copied">Command copied</string>
+    <string name="restart_close">Close</string>
+
+    <string name="restart_command_system_ui" translatable="false">killall com.android.systemui</string>
+    <string name="restart_command_system_ui_fallback" translatable="false">pkill -f com.android.systemui</string>
+    <string name="restart_command_settings" translatable="false">am force-stop com.android.settings</string>
 
     <string name="empty_title">No mappings yet</string>
     <string name="empty_body">Add the original SSID and a new display name to start renaming WiFi titles.</string>
-    <string name="no_results">No matching mappings</string>
 
     <string name="add_mapping">Add mapping</string>
-    <string name="action_add_mapping">Add mapping</string>
 
     <string name="action_exit_selection">Exit selection</string>
     <string name="action_select_all">Select all</string>
