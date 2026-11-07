@@ -1,24 +1,22 @@
 package com.wifirename.module
 
-import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -36,10 +34,9 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
@@ -50,42 +47,48 @@ import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Reset
-import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.squircle.squircleClip
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import java.util.Locale
 
-@Composable
-fun CustomColorSheet(
-    show: Boolean,
-    onDismiss: () -> Unit,
+enum class ColorTarget(
+    val titleRes: Int,
+    val isBackground: Boolean,
 ) {
+    BACKGROUND(R.string.color_target_background, true),
+    GLYPH(R.string.color_target_glyph, false),
+}
+
+@Composable
+fun ColorEditDialog(
+    target: ColorTarget?,
+    savedBg: Color,
+    savedFg: Color,
+    onDismiss: () -> Unit,
+    onSave: (Color, Color) -> Unit,
+) {
+    if (target == null) return
+
     val context = LocalContext.current
-    var bg by remember { mutableStateOf(IconSettings.defaultCustomBg) }
-    var fg by remember { mutableStateOf(IconSettings.defaultCustomFg) }
-    var target by rememberSaveable { mutableIntStateOf(0) }
-    var mode by remember { mutableIntStateOf(1) }
-    var hsl by remember { mutableStateOf(IconSettings.defaultCustomBg.toHsl()) }
-    var alpha by remember { mutableFloatStateOf(1f) }
-    var hexInput by remember { mutableStateOf("") }
-    var showHelp by remember { mutableStateOf(false) }
+    val current = if (target.isBackground) savedBg else savedFg
+    var bgDraft by remember(target) { mutableStateOf(savedBg.copy(alpha = 1f)) }
+    var fgDraft by remember(target) { mutableStateOf(savedFg) }
+    var hsl by remember(target) { mutableStateOf(current.toHsl()) }
+    var alpha by remember(target) { mutableFloatStateOf(if (target.isBackground) 1f else current.alpha) }
+    var hexInput by remember(target) { mutableStateOf(current.toHexString()) }
+    var mode by rememberSaveable(target) { mutableIntStateOf(AppSettings.iconColorMode(context)) }
     val scrollState = rememberScrollState()
-    val maxSheetHeight = with(LocalConfiguration.current) {
-        (screenHeightDp * 0.9f).dp
-    }
+    val maxHeight = (LocalConfiguration.current.screenHeightDp * 0.68f).dp
 
-    fun currentColor(): Color = if (target == 0) bg else fg
+    fun draftColor(): Color = if (target.isBackground) bgDraft else fgDraft
 
-    fun updateFromColor(color: Color) {
-        if (target == 0) {
-            bg = color.copy(alpha = 1f)
-        } else {
-            fg = color
-        }
-        hsl = color.toHsl()
-        alpha = color.alpha
-        hexInput = color.toHexString()
+    fun applyDraft(color: Color) {
+        val normalized = if (target.isBackground) color.copy(alpha = 1f) else color
+        if (target.isBackground) bgDraft = normalized else fgDraft = normalized
+        hsl = normalized.toHsl()
+        alpha = normalized.alpha
+        hexInput = normalized.toHexString()
     }
 
     fun applyHsl() {
@@ -93,151 +96,82 @@ fun CustomColorSheet(
             hue = hsl.h,
             saturation = hsl.s,
             lightness = hsl.l,
-            alpha = if (target == 0) 1f else alpha,
+            alpha = if (target.isBackground) 1f else alpha,
         )
-        if (target == 0) bg = color else fg = color
+        if (target.isBackground) bgDraft = color else fgDraft = color
         hexInput = color.toHexString()
     }
 
-    fun switchTarget(newTarget: Int) {
-        target = newTarget
-        val color = if (newTarget == 0) bg else fg
-        hsl = color.toHsl()
-        alpha = color.alpha
-        hexInput = color.toHexString()
+    fun resetDraft() {
+        applyDraft(
+            if (target.isBackground) IconSettings.defaultCustomBg else IconSettings.defaultCustomFg,
+        )
     }
 
-    fun resetColors() {
-        bg = IconSettings.defaultCustomBg
-        fg = IconSettings.defaultCustomFg
-        val color = currentColor()
-        hsl = color.toHsl()
-        alpha = color.alpha
-        hexInput = color.toHexString()
-    }
-
-    LaunchedEffect(show) {
-        if (show) {
-            target = 0
-            bg = IconSettings.customBgColor(context).copy(alpha = 1f)
-            fg = IconSettings.customFgColor(context)
-            hsl = bg.toHsl()
-            alpha = 1f
-            hexInput = bg.toHexString()
-            mode = AppSettings.iconColorMode(context)
-        }
-    }
-
-    val current = currentColor()
-    val contrast = contrastRatioOver(bg, fg)
+    val previewBg = bgDraft.copy(alpha = 1f)
+    val previewFg = fgDraft
+    val contrast = contrastRatioOver(previewBg, previewFg)
     val hueColors = remember {
         listOf(0f, 60f, 120f, 180f, 240f, 300f, 360f).map { hue ->
             hslColor(hue, 1f, 0.5f)
         }
     }
+    val validHex = parseHexColor(hexInput) != null
 
-    OverlayBottomSheet(
-        show = show,
-        title = stringResource(R.string.icon_color_custom_title),
-        endAction = {
-            IconButton(
-                onClick = { resetColors() },
-                minWidth = 40.dp,
-                minHeight = 40.dp,
-            ) {
-                Icon(
-                    imageVector = MiuixIcons.Reset,
-                    contentDescription = stringResource(R.string.icon_color_reset),
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-        },
-        insideMargin = DpSize(AppDimens.ScreenPadding, 0.dp),
+    OverlayDialog(
+        show = true,
         onDismissRequest = onDismiss,
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = maxSheetHeight)
-                .verticalScroll(scrollState)
-                .navigationBarsPadding()
-                .padding(vertical = 4.dp),
+                .heightIn(max = maxHeight)
+                .verticalScroll(scrollState),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Column(
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CustomPreview(
-                            bg = bg,
-                            fg = fg,
-                            circle = false,
-                            modifier = Modifier.size(64.dp),
-                        )
-                        Text(
-                            text = stringResource(R.string.icon_color_preview_squircle),
-                            modifier = Modifier.padding(top = 4.dp),
-                            fontSize = 12.sp,
-                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                        )
-                    }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CustomPreview(
-                            bg = bg,
-                            fg = fg,
-                            circle = true,
-                            modifier = Modifier.size(64.dp),
-                        )
-                        Text(
-                            text = stringResource(R.string.icon_color_preview_circle),
-                            modifier = Modifier.padding(top = 4.dp),
-                            fontSize = 12.sp,
-                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                        )
-                    }
-                }
                 Text(
-                    text = stringResource(R.string.icon_color_shortcut_explained),
-                    fontSize = 12.sp,
-                    lineHeight = 16.sp,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    textAlign = TextAlign.Center,
+                    text = stringResource(target.titleRes),
+                    modifier = Modifier.weight(1f),
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MiuixTheme.colorScheme.onSurface,
                 )
+                IconButton(
+                    onClick = { resetDraft() },
+                    minWidth = 40.dp,
+                    minHeight = 40.dp,
+                ) {
+                    Icon(
+                        imageVector = MiuixIcons.Reset,
+                        contentDescription = stringResource(R.string.icon_color_reset),
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
             }
-
-            SegmentedControl(
-                options = listOf(
-                    stringResource(R.string.icon_color_background),
-                    stringResource(R.string.icon_color_glyph),
-                ),
-                selectedIndex = target,
-                onSelected = { switchTarget(it) },
-            )
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                ColorSwatch(
-                    color = current,
-                    modifier = Modifier.size(52.dp),
-                )
                 TextField(
                     value = hexInput,
                     onValueChange = { raw ->
                         val text = raw.trim().uppercase(Locale.US).take(9)
                         hexInput = text
                         parseHexColor(text)?.let { parsed ->
-                            if (target == 0) {
-                                bg = parsed.copy(alpha = 1f)
-                                hsl = bg.toHsl()
+                            if (target.isBackground) {
+                                val opaque = parsed.copy(alpha = 1f)
+                                bgDraft = opaque
+                                hsl = opaque.toHsl()
                                 alpha = 1f
+                                hexInput = opaque.toHexString()
                             } else {
-                                fg = parsed
+                                fgDraft = parsed
                                 hsl = parsed.toHsl()
                                 alpha = parsed.alpha
                             }
@@ -251,19 +185,25 @@ fun CustomColorSheet(
                         capitalization = KeyboardCapitalization.Characters,
                     ),
                 )
+                CustomAdaptivePreview(
+                    bg = previewBg,
+                    fg = previewFg,
+                    circle = false,
+                    modifier = Modifier.size(54.dp),
+                )
+                CustomAdaptivePreview(
+                    bg = previewBg,
+                    fg = previewFg,
+                    circle = true,
+                    modifier = Modifier.size(54.dp),
+                )
             }
-            if (parseHexColor(hexInput) == null) {
+
+            if (!validHex) {
                 Text(
                     text = stringResource(R.string.icon_color_hex_invalid),
                     fontSize = 12.sp,
                     color = MiuixTheme.colorScheme.error,
-                )
-            }
-            if (target == 0) {
-                Text(
-                    text = stringResource(R.string.icon_color_bg_opaque_note),
-                    fontSize = 12.sp,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                 )
             }
 
@@ -317,7 +257,7 @@ fun CustomColorSheet(
                         Color.White,
                     ),
                 )
-                if (target == 1) {
+                if (!target.isBackground) {
                     ColorValueSlider(
                         label = stringResource(R.string.icon_color_opacity),
                         valueText = PercentValue(alpha),
@@ -340,10 +280,10 @@ fun CustomColorSheet(
                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                 )
                 PaletteGrid(
-                    color = current,
-                    onColorChange = { updateFromColor(it) },
+                    color = draftColor(),
+                    onColorChange = { color -> applyDraft(color) },
                 )
-                if (target == 1) {
+                if (!target.isBackground) {
                     ColorValueSlider(
                         label = stringResource(R.string.icon_color_opacity),
                         valueText = PercentValue(alpha),
@@ -370,9 +310,7 @@ fun CustomColorSheet(
             }
 
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 2.dp),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(AppDimens.ButtonSpacing),
             ) {
                 TextButton(
@@ -381,47 +319,24 @@ fun CustomColorSheet(
                     modifier = Modifier.weight(1f),
                 )
                 TextButton(
-                    text = stringResource(R.string.icon_color_apply),
+                    text = stringResource(R.string.save),
                     onClick = {
-                        val solidBg = bg.copy(alpha = 1f)
-                        IconSettings.setCustomColors(context, solidBg, fg)
-                        when (IconSwitcher.pinCustomShortcut(context, solidBg, fg)) {
-                            PinResult.REQUESTED -> {
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.icon_color_shortcut_sent),
-                                    Toast.LENGTH_LONG,
-                                ).show()
-                                onDismiss()
-                            }
-
-                            PinResult.UNSUPPORTED, PinResult.FAILED -> showHelp = true
-                        }
+                        val finalBg = bgDraft.copy(alpha = 1f)
+                        val finalFg = fgDraft
+                        onSave(finalBg, finalFg)
                     },
                     modifier = Modifier.weight(1f),
-                    enabled = parseHexColor(hexInput) != null,
+                    enabled = validHex,
                     colors = ButtonDefaults.textButtonColorsPrimary(),
                 )
             }
+            Spacer(Modifier.size(2.dp))
         }
-    }
-
-    OverlayDialog(
-        show = showHelp,
-        title = stringResource(R.string.icon_color_shortcut_help_title),
-        summary = stringResource(R.string.icon_color_shortcut_help_body),
-        onDismissRequest = { showHelp = false },
-    ) {
-        TextButton(
-            text = stringResource(R.string.ok),
-            onClick = { showHelp = false },
-            modifier = Modifier.fillMaxWidth(),
-        )
     }
 }
 
 @Composable
-private fun CustomPreview(
+private fun CustomAdaptivePreview(
     bg: Color,
     fg: Color,
     circle: Boolean,
@@ -430,7 +345,7 @@ private fun CustomPreview(
     val shaped = if (circle) {
         modifier.clip(CircleShape)
     } else {
-        modifier.squircleClip(22.dp)
+        modifier.squircleClip(16.dp)
     }
     Box(shaped.background(bg)) {
         Image(

@@ -1,7 +1,15 @@
 package com.wifirename.module
 
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -27,6 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -35,8 +44,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -47,6 +59,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.DropdownItem
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
@@ -55,12 +70,18 @@ import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
+import top.yukonga.miuix.kmp.basic.SnackbarDuration
+import top.yukonga.miuix.kmp.basic.SnackbarHost
+import top.yukonga.miuix.kmp.basic.SnackbarHostState
+import top.yukonga.miuix.kmp.basic.SnackbarResult
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.Check
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.ExpandMore
+import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.OverlaySpinnerPreference
 import top.yukonga.miuix.kmp.squircle.squircleClip
@@ -73,9 +94,41 @@ fun IconsColorsScreen(
     onBack: () -> Unit,
 ) {
     BackHandler(enabled = true) { onBack() }
+    val context = LocalContext.current
     val scrollBehavior = MiuixScrollBehavior()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     var expanded by rememberSaveable { mutableStateOf(true) }
-    var showCustom by rememberSaveable { mutableStateOf(false) }
+    var customBg by remember { mutableStateOf(IconSettings.customBgColor(context)) }
+    var customFg by remember { mutableStateOf(IconSettings.customFgColor(context)) }
+    var customSelected by remember { mutableStateOf(IconSettings.customTemplateSelected(context)) }
+    var colorTarget by remember { mutableStateOf<ColorTarget?>(null) }
+    var showShortcutHelp by remember { mutableStateOf(false) }
+
+    fun installShortcut() {
+        when (IconSwitcher.pinCustomShortcut(context, customBg.copy(alpha = 1f), customFg)) {
+            PinResult.REQUESTED -> Toast.makeText(
+                context,
+                context.getString(R.string.icon_color_shortcut_sent),
+                Toast.LENGTH_LONG,
+            ).show()
+
+            PinResult.UNSUPPORTED, PinResult.FAILED -> showShortcutHelp = true
+        }
+    }
+
+    fun showSavedSnackbar() {
+        scope.launch {
+            val result = snackbarHostState.showSnackbar(
+                message = context.getString(R.string.icon_color_saved),
+                actionLabel = context.getString(R.string.icon_color_saved_action),
+                duration = SnackbarDuration.Short,
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                installShortcut()
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -96,10 +149,13 @@ fun IconsColorsScreen(
                 },
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { paddingValues ->
         Box(Modifier.fillMaxSize()) {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScroll(scrollBehavior.nestedScrollConnection),
                 verticalArrangement = Arrangement.spacedBy(AppDimens.CardSpacing),
                 contentPadding = PaddingValues(
                     top = paddingValues.calculateTopPadding() + 12.dp,
@@ -109,60 +165,90 @@ fun IconsColorsScreen(
                 item(key = "active") {
                     ActiveIconCard(
                         activeIconId = activeIconId,
+                        customSelected = customSelected,
+                        customBg = customBg,
+                        customFg = customFg,
                         expanded = expanded,
                         onToggle = { expanded = !expanded },
-                        modifier = Modifier.padding(horizontal = AppDimens.ScreenPadding),
+                        modifier = Modifier
+                            .padding(horizontal = AppDimens.ScreenPadding)
+                            .zIndex(1f),
                     )
                 }
-                if (expanded) {
-                    item(key = "simple-title") {
-                        SectionTitle(stringResource(R.string.icons_section_simple))
-                    }
-                    item(key = "simple-row") {
-                        LazyRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentPadding = PaddingValues(horizontal = AppDimens.ScreenPadding),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                item(key = "options") {
+                    AnimatedVisibility(
+                        visible = expanded,
+                        enter = fadeIn(tween(300)) + expandVertically(
+                            animationSpec = tween(300, easing = FastOutSlowInEasing),
+                            expandFrom = Alignment.Top,
+                        ),
+                        exit = fadeOut(tween(200)) + shrinkVertically(
+                            animationSpec = tween(300, easing = FastOutSlowInEasing),
+                            shrinkTowards = Alignment.Top,
+                        ),
+                    ) {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(AppDimens.CardSpacing),
                         ) {
-                            items(IconCatalog.templates, key = { it.id }) { template ->
-                                IconTile(
-                                    iconId = template.id,
-                                    label = stringResource(template.nameRes),
-                                    selected = template.id == activeIconId,
-                                    onClick = { onIconSelected(template.id) },
-                                )
+                            SectionTitle(stringResource(R.string.icons_section_simple))
+                            LazyRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentPadding = PaddingValues(horizontal = AppDimens.ScreenPadding),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                items(IconCatalog.templates, key = { it.id }) { template ->
+                                    IconTile(
+                                        iconId = template.id,
+                                        label = stringResource(template.nameRes),
+                                        selected = !customSelected && template.id == activeIconId,
+                                        onClick = {
+                                            customSelected = false
+                                            IconSettings.setCustomTemplateSelected(context, false)
+                                            onIconSelected(template.id)
+                                        },
+                                    )
+                                }
                             }
-                        }
-                    }
-                    item(key = "anime-title") {
-                        SectionTitle(stringResource(R.string.icons_section_anime))
-                    }
-                    item(key = "anime-row") {
-                        LazyRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentPadding = PaddingValues(horizontal = AppDimens.ScreenPadding),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            items(IconCatalog.extras, key = { it.id }) { extra ->
-                                IconTile(
-                                    iconId = extra.id,
-                                    label = stringResource(extra.nameRes),
-                                    selected = extra.id == activeIconId,
-                                    onClick = { onIconSelected(extra.id) },
-                                )
+                            SectionTitle(stringResource(R.string.icons_section_anime))
+                            LazyRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentPadding = PaddingValues(horizontal = AppDimens.ScreenPadding),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                items(IconCatalog.extras, key = { it.id }) { extra ->
+                                    IconTile(
+                                        iconId = extra.id,
+                                        label = stringResource(extra.nameRes),
+                                        selected = !customSelected && extra.id == activeIconId,
+                                        onClick = {
+                                            customSelected = false
+                                            IconSettings.setCustomTemplateSelected(context, false)
+                                            onIconSelected(extra.id)
+                                        },
+                                    )
+                                }
                             }
+                            SectionTitle(stringResource(R.string.icon_color_section))
+                            ColorTemplateCard(
+                                activeIconId = activeIconId,
+                                customSelected = customSelected,
+                                customBg = customBg,
+                                customFg = customFg,
+                                onTemplateSelected = { id ->
+                                    customSelected = false
+                                    IconSettings.setCustomTemplateSelected(context, false)
+                                    onIconSelected(id)
+                                },
+                                onCustomSelected = {
+                                    customSelected = true
+                                    IconSettings.setCustomTemplateSelected(context, true)
+                                },
+                                onEditBackground = { colorTarget = ColorTarget.BACKGROUND },
+                                onEditGlyph = { colorTarget = ColorTarget.GLYPH },
+                                onInstallShortcut = { installShortcut() },
+                                modifier = Modifier.padding(horizontal = AppDimens.ScreenPadding),
+                            )
                         }
-                    }
-                    item(key = "color-title") {
-                        SectionTitle(stringResource(R.string.icon_color_section))
-                    }
-                    item(key = "color-card") {
-                        ColorTemplateCard(
-                            activeIconId = activeIconId,
-                            onIconSelected = onIconSelected,
-                            onCustom = { showCustom = true },
-                            modifier = Modifier.padding(horizontal = AppDimens.ScreenPadding),
-                        )
                     }
                 }
                 item(key = "footer") {
@@ -179,10 +265,38 @@ fun IconsColorsScreen(
                     )
                 }
             }
-            CustomColorSheet(
-                show = showCustom,
-                onDismiss = { showCustom = false },
+
+            ColorEditDialog(
+                target = colorTarget,
+                savedBg = customBg,
+                savedFg = customFg,
+                onDismiss = { colorTarget = null },
+                onSave = { bg, fg ->
+                    IconSettings.setCustomColors(context, bg, fg)
+                    IconSettings.setCustomTemplateSelected(context, true)
+                    customBg = bg
+                    customFg = fg
+                    customSelected = true
+                    colorTarget = null
+                    scope.launch {
+                        delay(320)
+                        showSavedSnackbar()
+                    }
+                },
             )
+
+            OverlayDialog(
+                show = showShortcutHelp,
+                title = stringResource(R.string.icon_color_shortcut_help_title),
+                summary = stringResource(R.string.icon_color_shortcut_help_body),
+                onDismissRequest = { showShortcutHelp = false },
+            ) {
+                TextButton(
+                    text = stringResource(R.string.ok),
+                    onClick = { showShortcutHelp = false },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
     }
 }
@@ -202,12 +316,16 @@ private fun SectionTitle(text: String) {
 @Composable
 private fun ActiveIconCard(
     activeIconId: String,
+    customSelected: Boolean,
+    customBg: Color,
+    customFg: Color,
     expanded: Boolean,
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val rotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
+        animationSpec = tween(300, easing = FastOutSlowInEasing),
         label = "active-chevron",
     )
     Card(
@@ -219,14 +337,26 @@ private fun ActiveIconCard(
         insideMargin = PaddingValues(AppDimens.CardInside),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconPreview(
-                iconId = activeIconId,
-                modifier = Modifier.size(64.dp),
-            )
+            if (customSelected) {
+                CustomIconPreview(
+                    bg = customBg,
+                    fg = customFg,
+                    modifier = Modifier.size(64.dp),
+                )
+            } else {
+                IconPreview(
+                    iconId = activeIconId,
+                    modifier = Modifier.size(64.dp),
+                )
+            }
             Spacer(Modifier.width(AppDimens.CardInside))
             Column(Modifier.weight(1f)) {
                 Text(
-                    text = stringResource(IconCatalog.labelRes(activeIconId)),
+                    text = if (customSelected) {
+                        stringResource(R.string.icon_tpl_custom)
+                    } else {
+                        stringResource(IconCatalog.labelRes(activeIconId))
+                    },
                     fontSize = 17.sp,
                     fontWeight = FontWeight.SemiBold,
                 )
@@ -364,16 +494,43 @@ private fun IconPreview(
 }
 
 @Composable
-private fun ColorTemplateCard(
-    activeIconId: String,
-    onIconSelected: (String) -> Unit,
-    onCustom: () -> Unit,
+private fun CustomIconPreview(
+    bg: Color,
+    fg: Color,
     modifier: Modifier = Modifier,
 ) {
-    val activeTemplate = IconCatalog.template(activeIconId) ?: IconCatalog.templates.first()
-    val selectedIndex = IconCatalog.templates.indexOfFirst { it.id == activeIconId }
-        .takeIf { it >= 0 } ?: 0
-    val items = IconCatalog.templates.map { template ->
+    Box(modifier.squircleClip(20.dp).background(bg)) {
+        Image(
+            painter = painterResource(R.drawable.ic_caret_wave_glyph),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.FillBounds,
+            colorFilter = ColorFilter.tint(fg),
+        )
+    }
+}
+
+@Composable
+private fun ColorTemplateCard(
+    activeIconId: String,
+    customSelected: Boolean,
+    customBg: Color,
+    customFg: Color,
+    onTemplateSelected: (String) -> Unit,
+    onCustomSelected: () -> Unit,
+    onEditBackground: () -> Unit,
+    onEditGlyph: () -> Unit,
+    onInstallShortcut: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val templates = IconCatalog.templates
+    val activeTemplate = IconCatalog.template(activeIconId) ?: templates.first()
+    val selectedIndex = if (customSelected) {
+        templates.size
+    } else {
+        templates.indexOfFirst { it.id == activeIconId }.takeIf { it >= 0 } ?: 0
+    }
+    val items = templates.map { template ->
         DropdownItem(
             text = stringResource(template.nameRes),
             summary = stringResource(template.summaryRes),
@@ -381,7 +538,13 @@ private fun ColorTemplateCard(
                 TemplateSwatch(template.swatch, swatchModifier)
             },
         )
-    }
+    } + DropdownItem(
+        text = stringResource(R.string.icon_tpl_custom),
+        summary = stringResource(R.string.icon_tpl_custom_summary),
+        icon = { swatchModifier ->
+            TemplateSwatch(listOf(customBg, customFg), swatchModifier)
+        },
+    )
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -392,10 +555,18 @@ private fun ColorTemplateCard(
             items = items,
             selectedIndex = selectedIndex,
             title = stringResource(R.string.icon_color_template),
-            summary = stringResource(activeTemplate.summaryRes),
+            summary = if (customSelected) {
+                stringResource(R.string.icon_tpl_custom_summary)
+            } else {
+                stringResource(activeTemplate.summaryRes)
+            },
             showValue = true,
             onSelectedIndexChange = { index ->
-                IconCatalog.templates.getOrNull(index)?.let { onIconSelected(it.id) }
+                if (index == templates.size) {
+                    onCustomSelected()
+                } else {
+                    templates.getOrNull(index)?.let { onTemplateSelected(it.id) }
+                }
             },
         )
         HorizontalDivider(
@@ -403,12 +574,58 @@ private fun ColorTemplateCard(
             thickness = 0.75.dp,
             color = MiuixTheme.colorScheme.dividerLine,
         )
+        ColorPreferenceRow(
+            title = stringResource(R.string.color_target_background),
+            color = customBg.copy(alpha = 1f),
+            onClick = onEditBackground,
+        )
+        HorizontalDivider(
+            modifier = Modifier.padding(horizontal = AppDimens.CardInside),
+            thickness = 0.75.dp,
+            color = MiuixTheme.colorScheme.dividerLine,
+        )
+        ColorPreferenceRow(
+            title = stringResource(R.string.color_target_glyph),
+            color = customFg,
+            onClick = onEditGlyph,
+        )
+        HorizontalDivider(
+            modifier = Modifier.padding(horizontal = AppDimens.CardInside),
+            thickness = 0.75.dp,
+            color = MiuixTheme.colorScheme.dividerLine,
+        )
         ArrowPreference(
-            title = stringResource(R.string.icon_color_custom),
-            summary = stringResource(R.string.icon_color_custom_summary),
-            onClick = onCustom,
+            title = stringResource(R.string.icon_custom_install),
+            bottomAction = {
+                Text(
+                    text = stringResource(R.string.icon_custom_install_note),
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                )
+            },
+            onClick = onInstallShortcut,
         )
     }
+}
+
+@Composable
+private fun ColorPreferenceRow(
+    title: String,
+    color: Color,
+    onClick: () -> Unit,
+) {
+    ArrowPreference(
+        title = title,
+        summary = color.toHexString(),
+        endActions = {
+            ColorSwatch(
+                color = color,
+                modifier = Modifier.size(24.dp),
+            )
+        },
+        onClick = onClick,
+    )
 }
 
 @Composable

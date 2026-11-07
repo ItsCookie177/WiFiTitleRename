@@ -15,8 +15,11 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -54,6 +57,7 @@ import top.yukonga.miuix.kmp.icon.extended.Refresh
 import top.yukonga.miuix.kmp.icon.extended.SelectAll
 import top.yukonga.miuix.kmp.icon.extended.Settings
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
@@ -103,7 +107,7 @@ fun AppRoot(
     val focusManager = LocalFocusManager.current
     val scope = rememberCoroutineScope()
     var infoDismissed by rememberSaveable { mutableStateOf(false) }
-    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var searchOpen by rememberSaveable { mutableStateOf(false) }
 
     var selecting by rememberSaveable { mutableStateOf(false) }
     var selectedSsids by rememberSaveable(
@@ -133,6 +137,7 @@ fun AppRoot(
     }
 
     fun openEditor(m: Mapping?) {
+        searchOpen = false
         focusManager.clearFocus()
         editingOriginal = m?.ssid
         ssidInput = m?.ssid ?: ""
@@ -140,8 +145,7 @@ fun AppRoot(
         showEditor = true
     }
 
-    val filteredMappings = filterMappings(mappings, searchQuery)
-    val visibleMappings = if (selecting) mappings else filteredMappings
+    val visibleMappings = mappings
 
     LaunchedEffect(tab) {
         if (selecting) exitSelection()
@@ -208,7 +212,9 @@ fun AppRoot(
                 onBack = { page = RootPage.MAIN },
             )
         } else {
+            Box(Modifier.fillMaxSize()) {
             Scaffold(
+                modifier = Modifier.fillMaxSize(),
                 topBar = {
                     AnimatedContent(
                         targetState = tab,
@@ -286,6 +292,20 @@ fun AppRoot(
                                             )
                                         }
                                     },
+                                    bottomContent = {
+                                        MappingSearchPill(
+                                            onClick = {
+                                                focusManager.clearFocus()
+                                                searchOpen = true
+                                            },
+                                            modifier = Modifier.padding(
+                                                start = AppDimens.ScreenPadding,
+                                                end = AppDimens.ScreenPadding,
+                                                top = 8.dp,
+                                                bottom = 10.dp,
+                                            ),
+                                        )
+                                    },
                                 )
                             }
                         } else {
@@ -344,8 +364,6 @@ fun AppRoot(
                                 Log.d(LOG_TAG, "info card dismissed")
                                 infoDismissed = true
                             },
-                            searchQuery = searchQuery,
-                            onSearchChanged = { searchQuery = it },
                             selecting = selecting,
                             selectedSsids = selectedSsids,
                             onRowClick = { m ->
@@ -622,6 +640,20 @@ fun AppRoot(
                     )
                 }
 
+            }
+
+            MappingSearchOverlay(
+                show = searchOpen && !selecting,
+                mappings = mappings,
+                onDismiss = { searchOpen = false },
+                onResult = { mapping ->
+                    searchOpen = false
+                    scope.launch {
+                        delay(160)
+                        openEditor(mapping)
+                    }
+                },
+            )
             }
         }
     }

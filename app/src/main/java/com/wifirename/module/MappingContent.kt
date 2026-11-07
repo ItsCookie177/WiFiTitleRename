@@ -18,20 +18,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import top.yukonga.miuix.kmp.basic.Card
@@ -41,24 +36,13 @@ import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextField
-import top.yukonga.miuix.kmp.basic.TextFieldDefaults
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.Close
-import top.yukonga.miuix.kmp.icon.basic.Search
 import top.yukonga.miuix.kmp.icon.extended.Add
 import top.yukonga.miuix.kmp.icon.extended.ListView
 import top.yukonga.miuix.kmp.squircle.squircleClip
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import androidx.compose.ui.state.ToggleableState
-
-fun filterMappings(mappings: List<Mapping>, query: String): List<Mapping> {
-    val q = query.trim()
-    if (q.isEmpty()) return mappings
-    return mappings.filter {
-        it.label.contains(q, ignoreCase = true) || it.ssid.contains(q, ignoreCase = true)
-    }
-}
 
 @Composable
 fun MappingContent(
@@ -69,8 +53,6 @@ fun MappingContent(
     paddingValues: PaddingValues,
     infoDismissed: Boolean,
     onInfoDismiss: () -> Unit,
-    searchQuery: String,
-    onSearchChanged: (String) -> Unit,
     selecting: Boolean,
     selectedSsids: Set<String>,
     onRowClick: (Mapping) -> Unit,
@@ -88,60 +70,6 @@ fun MappingContent(
             bottom = paddingValues.calculateBottomPadding() + AppDimens.ContentBottom,
         ),
     ) {
-        if (!selecting) {
-            item(key = "search") {
-                val focusManager = LocalFocusManager.current
-                TextField(
-                    value = searchQuery,
-                    onValueChange = onSearchChanged,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = AppDimens.ScreenPadding)
-                        .heightIn(min = 52.dp),
-                    insideMargin = DpSize(16.dp, 15.dp),
-                    colors = TextFieldDefaults.textFieldColors(
-                        backgroundColor = MiuixTheme.colorScheme.surfaceContainerHigh,
-                        labelColor = MiuixTheme.colorScheme.onSurfaceContainerVariant,
-                    ),
-                    cornerRadius = 26.dp,
-                    label = stringResource(R.string.search_hint),
-                    useLabelAsPlaceholder = true,
-                    leadingIcon = {
-                        Icon(
-                            imageVector = MiuixIcons.Basic.Search,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .padding(start = 16.dp, end = 10.dp)
-                                .size(20.dp),
-                            tint = MiuixTheme.colorScheme.onSurfaceContainerVariant,
-                        )
-                    },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(
-                                onClick = { onSearchChanged("") },
-                                minWidth = 48.dp,
-                                minHeight = 48.dp,
-                                modifier = Modifier.padding(end = 4.dp),
-                            ) {
-                                Icon(
-                                    imageVector = MiuixIcons.Basic.Close,
-                                    contentDescription = stringResource(R.string.action_clear_search),
-                                    modifier = Modifier.size(18.dp),
-                                    tint = MiuixTheme.colorScheme.onSurfaceContainerVariant,
-                                )
-                            }
-                        }
-                    },
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(
-                        onSearch = { focusManager.clearFocus() },
-                    ),
-                    singleLine = true,
-                )
-            }
-        }
-
         if (!infoDismissed) {
             item(key = "info") {
                 InfoCard(
@@ -170,24 +98,6 @@ fun MappingContent(
                 Column {
                     if (mappings.isEmpty() && !selecting) {
                         AddMappingRow(onClick = onAddClick)
-                    } else if (visibleMappings.isEmpty()) {
-                        Text(
-                            text = stringResource(R.string.no_results_query, searchQuery.trim()),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 20.dp),
-                            fontSize = 14.sp,
-                            color = MiuixTheme.colorScheme.onSurfaceContainerVariant,
-                            textAlign = TextAlign.Center,
-                        )
-                        if (!selecting) {
-                            HorizontalDivider(
-                                modifier = Modifier.padding(horizontal = AppDimens.CardInside),
-                                thickness = 0.75.dp,
-                                color = MiuixTheme.colorScheme.dividerLine,
-                            )
-                            AddMappingRow(onClick = onAddClick)
-                        }
                     } else {
                         visibleMappings.forEachIndexed { index, mapping ->
                             MappingRow(
@@ -218,7 +128,7 @@ fun MappingContent(
             }
         }
 
-        if (!selecting && mappings.isNotEmpty() && searchQuery.isBlank()) {
+        if (!selecting && mappings.isNotEmpty()) {
             item(key = "hint") {
                 Text(
                     text = stringResource(R.string.summary_hint),
@@ -276,7 +186,7 @@ private fun InfoCard(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun MappingRow(
+internal fun MappingRow(
     mapping: Mapping,
     selecting: Boolean,
     checked: Boolean,
